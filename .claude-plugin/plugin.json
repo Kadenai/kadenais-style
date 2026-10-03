@@ -1,7 +1,7 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Indicadores compactos com SVGs acima da caixa de mensagem: tokens de contexto, cotas e custo equivalente de API.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",

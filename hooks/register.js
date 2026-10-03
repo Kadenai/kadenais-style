@@ -1,5 +1,5 @@
 import { preferences, emptyLedger, addRequest, indicators, FEATURES } from './lib.js';
-import { BAND_BACKGROUND, COLOR, fontSize, svgBar } from './bar.js';
+import { BAND_BACKGROUND, TEXT_COLOR, fontSize, svgBar } from './bar.js';
 
 let ledger = emptyLedger();
 let sessionId = '';
@@ -90,7 +90,7 @@ export function register(on, options = {}) {
       const drawing = svgBar(items, size, await icons, e.props.bodyColumns * 8);
       content = Svg(drawing);
     } else {
-      content = Text({ color: COLOR, children: [items.map(item => item.text).join(' · ')] });
+      content = Text({ color: TEXT_COLOR, children: [items.map(item => item.text).join(' · ')] });
     }
     // Keep other mods in the shared band; our tiny row stays closest to the input.
     const inherited = await next(e);

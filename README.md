@@ -1,8 +1,8 @@
 # Kadenai's Style
 
-**v0.3.2 · Claude Code Desktop**
+**v0.3.3 · Claude Code Desktop**
 
-Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG na cor **#dd7654**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
+Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG na cor **#dd7654** e texto na cor **#212420**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
 
 ![Exemplo compacto, com números ilustrativos](assets/preview.png)
 
@@ -95,6 +95,10 @@ O teste `scripts/verify-desktop.mjs` também passou nas duas versões. Ele inici
 A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Uma verificação adicional em navegador sem interface reproduziu a moldura nativa e executou o normalizador e o gerador de estilos do Desktop analisado: a faixa permaneceu centralizada e cobriu o cinza nos dois temas, com tamanhos 8, 10 e 20 e em uma coluna estreita. Essas verificações não substituem uma conferência visual na conversa aberta.
 
 A moldura do Desktop reserva uma altura mínima de 40 px antes do zoom do aplicativo; diminuir o tamanho reduz os indicadores dentro desse espaço. A cobertura usa somente propriedades nativas de `Box` e a cor `memoryBackgroundColor`, que o Desktop mapeia para a superfície da conversa. Essa moldura pode mudar em versões futuras. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.3.3
+
+- Texto dos indicadores alterado para **#212420**, mantendo os SVGs e separadores em **#dd7654**.
 
 ## Mudanças em 0.3.2
 

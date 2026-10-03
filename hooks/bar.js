@@ -1,4 +1,5 @@
 export const COLOR = '#dd7654';
+export const TEXT_COLOR = '#212420';
 export const FONT = "'Anthropic Sans','Segoe UI Variable','Segoe UI',Arial,sans-serif";
 // Desktop maps this native theme key to --cds-surface-1, the transcript surface.
 export const BAND_BACKGROUND = 'memoryBackgroundColor';
@@ -34,7 +35,7 @@ export function svgBar(items, size, icons, availableWidth = Infinity) {
     }
     const drawing = icons[item.key].replace(/<svg\b[^>]*>|<\/svg>/g, '');
     groups.push(`<g transform="translate(${x} ${y + 2}) scale(${icon / 24})" fill="none" stroke="${COLOR}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${drawing}</g>`);
-    groups.push(`<text x="${x + icon + 4}" y="${y + rowHeight / 2}" dominant-baseline="central">${xml(item.text)}</text>`);
+    groups.push(`<text x="${x + icon + 4}" y="${y + rowHeight / 2}" dominant-baseline="central" fill="${TEXT_COLOR}">${xml(item.text)}</text>`);
     x += itemWidth;
     width = Math.max(width, x + 1);
   }
