@@ -190,18 +190,23 @@ export function register(on) {
   });
 
   on('turn.step', async function* ($, e, next) {
+    // Bind accounting to the request's conversation, even if a host switches
+    // sessions before a pending subagent response finishes.
+    const requestSessionId = await $.session.id();
     const result = yield* next(e);
     if (result.usage || result.stopReason) {
       // Serialize concurrent subagent completions; account at request level,
       // never add turn.complete totals (which would double-count tool loops).
       const id = e.turnId + ':' + (e.agentId || 'main') + ':' + e.index;
       const tracking = writes.then(async () => {
-        const currentId = await $.session.id();
-        if (currentId !== sessionId) await loadSession($);
+        const saved = await $.store.get('cost:' + requestSessionId);
+        const previous = requestSessionId === sessionId ? ledger
+          : saved && Array.isArray(saved.seen) && Number.isFinite(saved.usd) ? saved : emptyLedger();
         const ttl = (await $.store.get('pref:cacheTTL')) === '1h' ? '1h' : '5m';
-        ledger = addRequest(ledger, id, result.usage, ttl);
-        await $.store.set('cost:' + sessionId, ledger);
-        await refresh($);
+        const recorded = addRequest(previous, id, result.usage, ttl);
+        await $.store.set('cost:' + requestSessionId, recorded);
+        if (requestSessionId === sessionId) ledger = recorded;
+        if (await $.session.id() === requestSessionId) await refresh($);
       });
       writes = tracking.catch(() => {});
       try { await tracking; } catch (error) { errorMessage = 'Falha ao registrar estimativa: ' + safeText(error?.message, 120); }

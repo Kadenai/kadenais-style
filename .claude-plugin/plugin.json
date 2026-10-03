@@ -1,6 +1,6 @@
 {
   "name": "kadenais-style",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kadenai's Style: contexto, cotas, custo equivalente de API e conversas sem projeto para Claude Code Desktop.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",

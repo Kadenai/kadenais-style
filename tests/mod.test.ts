@@ -11,6 +11,7 @@ const footer = { plugin: 'kadenais-style', component: 'SessionMode', requestId: 
 
 function fixture(on, seed: Record<string, unknown> = {}) {
   const saved = new Map<string, unknown>(Object.entries(seed));
+  const identity = { id: ID };
   const commands: string[] = [];
   mock.clock(on, { now: 1_791_046_800_000 });
   mock.env(on, { OS: 'Windows_NT' });
@@ -18,7 +19,7 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined }; });
   on('store.keys', () => ({ value: [...saved.keys()] }));
   on('store.delete', ($, e) => { saved.delete(e.key); return { value: undefined }; });
-  on('session.id', () => ({ value: ID }));
+  on('session.id', () => ({ value: identity.id }));
   on('session.cwd', () => ({ value: CWD }));
   on('session.turns', () => ({ value: 0 }));
   on('session.usage', () => ({ value: usage }));
@@ -32,7 +33,7 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('session.measure', ($, e) => ({ changed: e.changed }));
   on('prompt.submit', ($, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '' }));
-  return { saved, commands };
+  return { saved, commands, identity };
 }
 
 test('registers commands and draws all four real measurements in the Desktop footer', async ($, on) => {
@@ -108,6 +109,22 @@ test('first prompt becomes a local title and later prompts do not overwrite it',
   await $.prompt.submit({ text: 'Planejar viagem' });
   await $.prompt.submit({ text: 'Segundo assunto' });
   expect((f.saved.get('recent:' + ID) as any).title).toBe('Planejar viagem');
+});
+
+test('a response finishing after a session switch is charged to its original conversation', async ($, on) => {
+  const f = fixture(on);
+  on('turn.step', async function* ($, e) {
+    yield { kind: 'text', index: 0, text: 'old response' };
+    f.identity.id = '22222222-2222-4222-8222-222222222222';
+    return { turnId: e.turnId, index: e.index, answer: 'old response', toolUses: [], stopReason: 'end_turn',
+      usage: { model: 'claude-opus-5-5', input_tokens: 1000, output_tokens: 100, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } };
+  });
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  const stream = $.turn.step({ turnId: 'old-turn', index: 0, model: 'claude-opus-5-5', messageCount: 1 });
+  let item = await stream.next();
+  while (!item.done) item = await stream.next();
+  expect((f.saved.get('cost:' + ID) as any).requests).toBe(1);
+  expect(f.saved.has('cost:' + f.identity.id)).toBe(false);
 });
 
 test('project and chat tabs read shared recent items from other sessions', async ($, on) => {

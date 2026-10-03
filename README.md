@@ -2,7 +2,7 @@
 
 Mods pessoais para deixar o **Claude Code Desktop** mais próximo do seu jeito de trabalhar.
 
-**v0.1.0 · Claude Code 2.1.287+ · Windows para o iniciador de chats livres.**
+**v0.1.1 · Claude Code 2.1.287+ · Windows para o iniciador de chats livres.**
 
 ## O que está implementado
 
@@ -123,6 +123,8 @@ claude plugin test .
 ```
 
 Os testes usam **`claude-code/testing`**, o kit oficial: renderização e controles em Desktop/terminal, persistência, retomada após `/clear`, respostas em streaming, subagentes, preços, dados ausentes, recentes e falhas ao abrir o Desktop. Eles validam as árvores de interface e os eventos; não substituem a inspeção visual no aplicativo.
+
+Verificação local em 2026-10-03, Claude Code 2.1.288: **16 testes passaram**, manifestos validados sem avisos e iniciador PowerShell conferido com duas pastas independentes. A aparência final no Desktop ainda precisa ser conferida numa sessão real.
 
 ## Referências
 
