@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing';
 import { modelPrice, requestCost } from '../hooks/prices.js';
-import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, projectList, resetText } from '../hooks/lib.js';
+import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, preferences } from '../hooks/lib.js';
 
 const response = { model: 'claude-opus-5-5-20260901', input_tokens: 1000, output_tokens: 100,
   cache_creation_input_tokens: 2000, cache_read_input_tokens: 5000 };
@@ -40,18 +40,18 @@ test('distinguishes unavailable measurements from genuine zero use and honors ea
   const unavailable = indicators({}, DEFAULTS, emptyLedger(), 0);
   expect(unavailable[0].text).toBe('Contexto —');
   const known = indicators({ context: { percent: 0, tokens: 0, window: 200000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 0 }] }, DEFAULTS, emptyLedger(), 0);
-  expect(known[0].text).toBe('Contexto 0% · 0/200.0k');
+  expect(known[0].text).toBe('Contexto 0%');
   expect(known[1].text).toBe('Sessão 0%');
   expect(indicators({}, { context: false, session: false, weekly: false, cost: false }, emptyLedger(), 0)).toEqual([]);
 });
 
-test('deduplicates Windows projects by path and excludes projectless chats', () => {
-  const rows = [
-    { cwd: 'C:\\Projects\\Demo', updatedAt: 1 },
-    { cwd: 'c:/projects/demo', updatedAt: 2 },
-    { cwd: 'C:\\Chats\\one', projectless: true, updatedAt: 3 },
-  ];
-  expect(projectList(rows)).toEqual([rows[1]]);
-  expect(resetText('invalid', 0)).toBe('');
-  expect(resetText('1970-01-01T01:05:00Z', 0)).toBe(' · renova em 1h 5m');
+test('native configuration honors all 16 combinations of independent switches', () => {
+  const keys = ['context', 'session', 'weekly', 'cost'];
+  for (let mask = 0; mask < 16; mask++) {
+    const options = Object.fromEntries(keys.map((key, index) => [key, Boolean(mask & (1 << index))]));
+    expect(preferences(options)).toEqual(options);
+    expect(indicators({}, preferences(options), emptyLedger()).map(item => item.key))
+      .toEqual(keys.filter(key => options[key]));
+  }
+  expect(preferences({ context: 'false' })).toEqual(DEFAULTS);
 });

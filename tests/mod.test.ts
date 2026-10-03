@@ -1,85 +1,81 @@
 import { expect, mock, test } from 'claude-code/testing';
+import { register } from '../hooks/register.js';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const CWD = 'C:\\Projects\\Demo';
 const usage = { context: { percent: 42, tokens: 84000, window: 200000 },
   rateLimits: [{ kind: 'five_hour', percentUsed: 23 }, { kind: 'seven_day', percentUsed: 61 }], cost: { usd: 1.2345 } };
-const pane = { plugin: 'kadenais-style', component: 'Pane', requestId: 'kadenais-style',
-  viewport: { columns: 140, rows: 50, isFullscreen: true },
-  props: { title: "Kadenai's Style", isFocused: true, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} } } as const;
 const footer = { plugin: 'kadenais-style', component: 'SessionMode', requestId: 'mode', props: { modes: ['Default'] } } as const;
 
 function fixture(on, seed: Record<string, unknown> = {}) {
   const saved = new Map<string, unknown>(Object.entries(seed));
   const identity = { id: ID };
   const commands: string[] = [];
+  const renders: any[] = [];
   mock.clock(on, { now: 1_791_046_800_000 });
-  mock.env(on, { OS: 'Windows_NT' });
   on('store.get', ($, e) => ({ value: saved.get(e.key) }));
   on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined }; });
-  on('store.keys', () => ({ value: [...saved.keys()] }));
-  on('store.delete', ($, e) => { saved.delete(e.key); return { value: undefined }; });
   on('session.id', () => ({ value: identity.id }));
-  on('session.cwd', () => ({ value: CWD }));
   on('session.turns', () => ({ value: 0 }));
   on('session.usage', () => ({ value: usage }));
   on('session.start', () => ({ cwd: CWD }));
   on('classic.SessionStart', () => ({}));
   on('command.register', ($, e) => { commands.push(e.name); return { value: { command: e.name } }; });
-  on('ui.open', () => ({ value: { isPlaced: true } }));
-  on('ui.close', () => ({ value: undefined }));
-  on('ui.toast', () => ({ value: undefined }));
-  on('ui.render', () => ({ type: 'Text', props: {}, children: ['Claude mode retained'] }));
+  on('ui.render', ($, e) => {
+    renders.push(e);
+    // The engine reads modes. Do not substitute a constant tree that ignores props.
+    return { type: 'Box', props: { flexDirection: 'row' }, children:
+      e.props.modes.map(text => ({ type: 'Text', props: {}, children: [text] })) };
+  });
   on('session.measure', ($, e) => ({ changed: e.changed }));
   on('prompt.submit', ($, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '' }));
-  return { saved, commands, identity };
+  return { saved, commands, renders, identity };
 }
 
-test('registers commands and draws all four real measurements in the Desktop footer', async ($, on) => {
+test('passes all four measurements to the native footer without plugin buttons', async ($, on) => {
   const f = fixture(on);
   await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
-  expect(f.commands).toEqual(['kadenai', 'kadenai-recent', 'kadenai-new']);
   const ui = await $.ui.mount({ ...footer, surface: 'desktop' });
-  expect(await ui.find({ type: 'Text', text: 'Claude mode retained' })).toBeDefined();
-  expect(await ui.find({ type: 'Text', text: 'Contexto 42% · 84.0k/200.0k' })).toBeDefined();
-  expect(await ui.find({ type: 'Text', text: 'Sessão 23%' })).toBeDefined();
-  expect(await ui.find({ type: 'Text', text: 'Semana 61%' })).toBeDefined();
-  expect(await ui.find({ type: 'Text', text: 'API ≈ US$ 1.2345' })).toBeDefined();
+  for (const text of ['Default', 'Contexto 42%', 'Sessão 23%', 'Semana 61%', 'API ≈ US$ 1.2345'])
+    expect(await ui.find({ type: 'Text', text })).toBeDefined();
+  expect(await ui.find({ type: 'Button' })).toBeUndefined();
+  expect(f.commands).toEqual([]);
+  expect(f.renders[f.renders.length - 1].props.modes).toEqual(
+    ['Default', 'Contexto 42%', 'Sessão 23%', 'Semana 61%', 'API ≈ US$ 1.2345']);
 });
 
-test('all switches persist and turn their indicator off in both surfaces', async ($, on) => {
-  const f = fixture(on);
-  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
-  for (const surface of ['desktop', 'terminal'] as const) {
-    const settings = await $.ui.mount({ ...pane, surface });
-    const bar = await $.ui.mount({ ...footer, surface });
-    for (const key of ['context', 'session', 'weekly', 'cost']) await settings.press({ key: 'toggle-' + key });
-    const expected = surface === 'terminal';
-    for (const key of ['context', 'session', 'weekly', 'cost']) expect(f.saved.get('pref:' + key)).toBe(expected);
-    for (const text of [/^Contexto /, /^Sessão /, /^Semana /, /^API ≈ /]) {
-      if (expected) expect(await bar.find({ type: 'Text', text })).toBeDefined();
-      else expect(await bar.find({ type: 'Text', text })).toBeUndefined();
-    }
-    await settings.unmount(); await bar.unmount();
+test('native configuration is used by the registered footer hook, without custom panels', async () => {
+  for (let mask = 0; mask < 16; mask++) {
+    const keys = ['context', 'session', 'weekly', 'cost'];
+    const options = Object.fromEntries(keys.map((key, index) => [key, Boolean(mask & (1 << index))]));
+    let render: any;
+    const registrations: any[] = [];
+    register((event, matcher, handler) => {
+      registrations.push({ event, matcher });
+      if (event === 'ui.render') render = handler;
+    }, options);
+    const input = { component: 'SessionMode', props: { modes: ['Default'] } };
+    const result = await render({}, input, async e => e);
+    const labels = ['Contexto —', 'Sessão —', 'Semana —', 'API ≈ —'];
+    expect(result.props.modes).toEqual(['Default', ...labels.filter((label, index) => options[keys[index]])]);
+    expect(input.props.modes).toEqual(['Default']);
+    expect(registrations.filter(r => r.event === 'ui.render')).toEqual(
+      [{ event: 'ui.render', matcher: { component: 'SessionMode' } }]);
+    expect(registrations.some(r => r.event === 'command.run')).toBe(false);
   }
 });
 
-test('restores persisted choices after clear and keeps buttons available when indicators are hidden', async ($, on) => {
-  fixture(on, { 'pref:context': false, 'pref:session': false, 'pref:weekly': false, 'pref:cost': false });
-  await $.classic.SessionStart({ source: 'clear' });
-  const ui = await $.ui.mount({ ...footer, surface: 'desktop' });
-  expect(await ui.find({ type: 'Text', text: /^Contexto / })).toBeUndefined();
-  expect(await ui.find({ key: 'kadenai-settings' })).toBeDefined();
-});
-
-test('updates live quota measurements without inventing unavailable weekly data', async ($, on) => {
+test('updates quota measurements and keeps unavailable data distinct from zero', async ($, on) => {
   fixture(on);
   await $.session.measure({ context: { window: 200000, percent: 90 }, rateLimits: [{ kind: 'five_hour', percentUsed: 99 }], changed: ['context', 'rateLimits'] });
-  const ui = await $.ui.mount({ ...footer, surface: 'desktop' });
-  expect(await ui.find({ type: 'Text', text: 'Semana —' })).toBeDefined();
-  expect(await ui.find({ type: 'Text', text: 'Sessão 99%' })).toBeDefined();
-  expect((await ui.find({ type: 'Text', text: 'Contexto 90%' })).props.color).toBe('red');
+  for (const surface of ['desktop', 'terminal'] as const) {
+    const ui = await $.ui.mount({ ...footer, surface });
+    for (const text of ['Contexto 90%', 'Sessão 99%', 'Semana —', 'API ≈ —'])
+      expect(await ui.find({ type: 'Text', text })).toBeDefined();
+    expect(await ui.find({ type: 'Button' })).toBeUndefined();
+    await ui.unmount();
+  }
 });
 
 test('streaming stays intact and cost counts requests once, including subagents', async ($, on) => {
@@ -101,14 +97,7 @@ test('streaming stays intact and cost counts requests once, including subagents'
   const ledger = f.saved.get('cost:' + ID) as any;
   expect(ledger.requests).toBe(2);
   expect(Number(ledger.usd.toFixed(6))).toBe(0.034);
-});
-
-test('first prompt becomes a local title and later prompts do not overwrite it', async ($, on) => {
-  const f = fixture(on);
-  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
-  await $.prompt.submit({ text: 'Planejar viagem' });
-  await $.prompt.submit({ text: 'Segundo assunto' });
-  expect((f.saved.get('recent:' + ID) as any).title).toBe('Planejar viagem');
+  expect([...f.saved.keys()].some(key => key.startsWith('recent:') || key.startsWith('pref:'))).toBe(false);
 });
 
 test('a response finishing after a session switch is charged to its original conversation', async ($, on) => {
@@ -127,35 +116,10 @@ test('a response finishing after a session switch is charged to its original con
   expect(f.saved.has('cost:' + f.identity.id)).toBe(false);
 });
 
-test('project and chat tabs read shared recent items from other sessions', async ($, on) => {
-  fixture(on, { 'recent:other': { id: 'other', cwd: 'C:\\Projects\\Second', title: 'Outra conversa', updatedAt: 10, projectless: false } });
-  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
-  const ui = await $.ui.mount({ ...pane, surface: 'desktop' });
-  await ui.press({ key: 'tab-projects' });
-  expect(await ui.find({ key: 'recent-other' })).toBeDefined();
-  await ui.press({ key: 'tab-chats' });
-  expect((await ui.find({ key: 'recent-other' })).props.label).toBe('Outra conversa');
-});
-
-test('projectless action prepares a folder and requests Desktop without sending a prompt', async ($, on) => {
-  fixture(on);
-  const calls: any[] = [];
-  on('process.run', ($, e) => {
-    calls.push(e);
-    return { value: { exitCode: 0, stdout: e.argv[0] === 'powershell.exe' ? JSON.stringify({ path: 'C:\\Chats\\new' }) : 'Opened', stderr: '' } };
-  });
-  await $.command.run({ command: 'kadenai-new', args: '' });
-  expect(calls.length).toBe(2);
-  expect(calls[0].argv).toContain('-PrepareOnly');
-  expect(calls[1].argv).toEqual(['claude', '--desktop']);
-  expect(calls[1].init.cwd).toBe('C:\\Chats\\new');
-});
-
-test('launch failures are shown and never reported as success', async ($, on) => {
-  const f = fixture(on);
-  on('process.run', () => ({ value: { exitCode: 1, stdout: '', stderr: 'Falha de teste' } }));
-  await $.command.run({ command: 'kadenai-new', args: '' });
-  const ui = await $.ui.mount({ ...pane, surface: 'desktop' });
-  expect(await ui.find({ type: 'Text', text: 'Falha de teste' })).toBeDefined();
-  expect(f.saved.has('recent:created')).toBe(false);
+test('resuming a conversation restores its cost without recording prompt titles or recent chats', async ($, on) => {
+  const f = fixture(on, { ['cost:' + ID]: { usd: 2.5, requests: 1, unpriced: 0, seen: ['old'], models: {}, sinceActivation: false } });
+  await $.classic.SessionStart({ source: 'resume' });
+  await $.prompt.submit({ text: 'A private message' });
+  expect((f.saved.get('cost:' + ID) as any).usd).toBe(2.5);
+  expect([...f.saved.keys()]).toEqual(['cost:' + ID]);
 });
