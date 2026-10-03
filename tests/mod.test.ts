@@ -48,7 +48,7 @@ test('draws a tiny SVG above the input, preserves other mods and reads icons onl
   expect(svg.props.height).toBe(18);
   for (const value of ['84.000 tokens', '5h 23%', '7d 61%', '≈ US$ 1,23'])
     expect(svg.props.alt).toContain(value);
-  expect(svg.props.source).toContain('#dd7654');
+  expect(svg.props.source).toContain('#212420');
   expect(svg.props.source).toContain('font-size="10"');
   expect(await ui.find({ type: 'Text', text: 'Other mod' })).toBeDefined();
   expect(await ui.find({ type: 'Button' })).toBeUndefined();

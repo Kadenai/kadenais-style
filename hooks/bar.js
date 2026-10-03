@@ -1,5 +1,5 @@
-export const COLOR = '#dd7654';
-export const TEXT_COLOR = '#212420';
+export const COLOR = '#212420';
+export const TEXT_COLOR = COLOR;
 export const FONT = "'Anthropic Sans','Segoe UI Variable','Segoe UI',Arial,sans-serif";
 // Desktop maps this native theme key to --cds-surface-1, the transcript surface.
 export const BAND_BACKGROUND = 'memoryBackgroundColor';

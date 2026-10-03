@@ -8,7 +8,7 @@
       "source": "./",
       "displayName": "Kadenai's Style",
       "description": "Faixa compacta com SVGs, tokens de contexto, cotas e custo de API, com tamanho ajustável na configuração do plugin.",
-      "version": "0.3.3"
+      "version": "0.3.4"
     }
   ]
 }
