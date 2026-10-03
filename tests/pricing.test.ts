@@ -1,9 +1,25 @@
 import { expect, test } from 'claude-code/testing';
 import { modelPrice, requestCost } from '../hooks/prices.js';
-import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, preferences } from '../hooks/lib.js';
+import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, preferences, resetCountdown } from '../hooks/lib.js';
 
 const response = { model: 'claude-opus-5-5-20260901', input_tokens: 1000, output_tokens: 100,
   cache_creation_input_tokens: 2000, cache_read_input_tokens: 5000 };
+
+test('counts down the actual account reset across time zones without inventing missing data', () => {
+  const now = Date.parse('2026-10-03T17:00:00-03:00');
+  expect(resetCountdown('2026-10-03T22:14:00Z', now)).toBe('2h 14min');
+  expect(resetCountdown('2026-10-03T19:14:00-03:00', now)).toBe('2h 14min');
+  expect(resetCountdown('2026-10-03T21:00:00Z', now)).toBe('1h');
+  expect(resetCountdown('2026-10-03T20:00:01Z', now)).toBe('1min');
+  expect(resetCountdown('2026-10-03T20:00:00Z', now)).toBe('0min');
+  expect(resetCountdown('2026-10-02T20:00:00Z', now)).toBe('0min');
+  for (const timestamp of [undefined, null, '', 'not a timestamp', 1791064800])
+    expect(resetCountdown(timestamp, now)).toBe(null);
+  expect(resetCountdown('2026-10-03T22:14:00Z', NaN)).toBe(null);
+  const measured = { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: '2026-10-03T20:00:00Z' }] };
+  expect(indicators(measured, DEFAULTS, emptyLedger(), now)[1].text).toBe('5h 100% (0min)');
+  expect(indicators(measured, { ...DEFAULTS, session: false }, emptyLedger(), now).some(item => item.key === 'session')).toBe(false);
+});
 
 test('prices disjoint input, output and cache categories, including Opus 5.5 cache discount', () => {
   expect(Number(requestCost(response).toFixed(6))).toBe(0.017);

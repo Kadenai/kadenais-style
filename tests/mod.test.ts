@@ -15,7 +15,7 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   const commands: string[] = [];
   const renders: any[] = [];
   const reads: string[] = [];
-  mock.clock(on, { now: 1_791_046_800_000 });
+  const clock = mock.clock(on, { now: 1_791_046_800_000 });
   on('store.get', ($, e) => ({ value: saved.get(e.key) }));
   on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined }; });
   on('session.id', () => ({ value: identity.id }));
@@ -36,7 +36,7 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('session.measure', ($, e) => ({ changed: e.changed }));
   on('prompt.submit', ($, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '' }));
-  return { saved, commands, renders, identity, reads };
+  return { saved, commands, renders, identity, reads, clock };
 }
 
 test('draws a tiny SVG above the input, preserves other mods and reads icons only once', async ($, on) => {
@@ -78,6 +78,7 @@ test('each native switch removes its own indicator without custom panels', async
     const input = { component: 'AbovePrompt', surface: 'desktop', props: { hasSurvey: false, bodyColumns: 80 } };
     const element = type => ({ children = [], ...props }) => ({ type, props, children });
     const $ = { plugin: { root: 'plugin' }, fs: { read: async () => '<svg><path d="M0 0h24"/></svg>' },
+      clock: { now: async () => 1_791_046_800_000 },
       ui: { resolve: () => ({ Text: element('Text'), Box: element('Box'), Svg: element('Svg') }) } };
     const other = { type: 'Text', props: {}, children: ['Other mod'] };
     let fallbacks = 0;
@@ -98,6 +99,35 @@ test('each native switch removes its own indicator without custom panels', async
       [{ event: 'ui.render', matcher: { component: 'AbovePrompt' } }]);
     expect(registrations.some(r => r.event === 'command.run')).toBe(false);
   }
+});
+
+test('the five-hour countdown redraws while idle and follows a new reset timestamp', async ($, on) => {
+  const f = fixture(on);
+  const invalidations: string[] = [];
+  on('ui.invalidate', ($, e, next) => { invalidations.push(e.event); return next(e); });
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  await $.classic.SessionStart({ source: 'resume' });
+  const measured = { ...usage, rateLimits: [
+    { kind: 'five_hour', percentUsed: 23, resetsAt: new Date(f.clock.now() + 134 * 60000).toISOString() },
+    { kind: 'seven_day', percentUsed: 61, resetsAt: new Date(f.clock.now() + 7 * 86400000).toISOString() }
+  ], changed: ['rateLimits'] as const };
+  await $.session.measure(measured);
+  const ui = await $.ui.mount({ ...band, surface: 'desktop' });
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('5h 23% (2h 14min)');
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('Semana: 7d 61%;');
+  invalidations.length = 0;
+  await f.clock.advance(60000);
+  expect(invalidations).toEqual(['ui.render']);
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('5h 23% (2h 13min)');
+  await $.session.measure({ ...measured, rateLimits: [
+    { kind: 'five_hour', percentUsed: 0, resetsAt: new Date(f.clock.now() + 60000).toISOString() }
+  ] });
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('5h 0% (1min)');
+  await f.clock.advance(60000);
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('5h 0% (0min)');
+  await $.session.measure({ ...measured, rateLimits: [{ kind: 'five_hour', percentUsed: 5 }] });
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('Sessão (5 horas): 5h 5%;');
+  await ui.unmount();
 });
 
 test('updates quota measurements and keeps unavailable data distinct from zero', async ($, on) => {

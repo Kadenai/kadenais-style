@@ -5,6 +5,16 @@ let ledger = emptyLedger();
 let sessionId = '';
 let usage = null;
 let writes = Promise.resolve();
+let countdown;
+
+function startCountdown($, enabled) {
+  if (enabled && !countdown) {
+    countdown = $.clock.every(60000, () => {
+      if (usage?.rateLimits?.some(window => window.kind === 'five_hour' && window.resetsAt))
+        $.ui.invalidate('ui.render');
+    });
+  }
+}
 
 async function refresh($) {
   usage = await $.session.usage();
@@ -26,11 +36,13 @@ export function register(on, options = {}) {
 
   on('session.start', async ($, e, next) => {
     await loadSession($);
+    startCountdown($, prefs.session);
     return next(e);
   });
 
   on('classic.SessionStart', { source: ['clear', 'resume', 'fork'] }, async ($, e, next) => {
     await loadSession($);
+    startCountdown($, prefs.session);
     return next(e);
   });
 
@@ -79,7 +91,7 @@ export function register(on, options = {}) {
   });
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const items = indicators(usage, prefs, ledger);
+    const items = indicators(usage, prefs, ledger, await $.clock.now());
     if (e.props.hasSurvey || !items.length) return next(e);
     const { Box, Text, Svg } = $.ui.resolve(e);
     let content;

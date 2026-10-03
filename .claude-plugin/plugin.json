@@ -1,7 +1,7 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Indicadores compactos com SVGs acima da caixa de mensagem: tokens de contexto, cotas e custo equivalente de API.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",
@@ -16,7 +16,7 @@
     },
     "session": {
       "type": "boolean", "title": "Mostrar limite da sessão",
-      "description": "5h: percentual usado da cota de 5 horas da conta.",
+      "description": "5h: percentual usado da cota de 5 horas da conta e tempo até o reset entre parênteses, quando informado pelo Claude.",
       "default": true
     },
     "weekly": {

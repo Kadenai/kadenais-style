@@ -21,6 +21,17 @@ export function tokenCount(value) {
     ? Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '—';
 }
 
+export function resetCountdown(resetsAt, now) {
+  if (typeof resetsAt !== 'string' || !Number.isFinite(now)) return null;
+  const reset = Date.parse(resetsAt);
+  if (!Number.isFinite(reset)) return null;
+  // Round up: a window with a few seconds remaining has not reset yet.
+  const totalMinutes = Math.max(0, Math.ceil((reset - now) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours ? hours + 'h' + (minutes ? ' ' + minutes + 'min' : '') : minutes + 'min';
+}
+
 export function emptyLedger() {
   return { usd: 0, requests: 0, unpriced: 0, seen: [], models: {}, sinceActivation: false };
 }
@@ -52,7 +63,7 @@ export function costInfo(usage, ledger) {
   return { usd: ledger.usd, source: 'tabela oficial', partial: ledger.sinceActivation || ledger.unpriced > 0 };
 }
 
-export function indicators(usage, prefs, ledger) {
+export function indicators(usage, prefs, ledger, now) {
   const result = [];
   const context = usage?.context ?? {};
   if (prefs.context) result.push({ key: 'context', label: 'Contexto', value: context.tokens, text:
@@ -60,7 +71,9 @@ export function indicators(usage, prefs, ledger) {
   for (const [key, kind, label, short] of [['session', 'five_hour', 'Sessão (5 horas)', '5h'], ['weekly', 'seven_day', 'Semana', '7d']]) {
     if (!prefs[key]) continue;
     const window = usage?.rateLimits?.find(w => w.kind === kind);
-    result.push({ key, label, value: window?.percentUsed, text: short + ' ' + percent(window?.percentUsed) });
+    const remaining = key === 'session' ? resetCountdown(window?.resetsAt, now) : null;
+    result.push({ key, label, value: window?.percentUsed,
+      text: short + ' ' + percent(window?.percentUsed) + (remaining === null ? '' : ' (' + remaining + ')') });
   }
   if (prefs.cost) {
     const cost = costInfo(usage, ledger);

@@ -1,6 +1,6 @@
 # Kadenai's Style
 
-**v0.3.4 · Claude Code Desktop**
+**v0.3.5 · Claude Code Desktop**
 
 Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG, texto e separadores na cor **#212420**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
 
@@ -9,7 +9,7 @@ Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones S
 | Indicador | O que mostra |
 | --- | --- |
 | Camadas / tokens | Tokens utilizados na janela de contexto atual, conforme a última resposta |
-| Relógio / 5h | Percentual usado da cota de 5 horas da conta |
+| Relógio / 5h | Percentual usado da cota de 5 horas da conta e tempo até o reset, entre parênteses |
 | Calendário / 7d | Percentual usado da cota semanal da conta |
 | Moeda / US$ | Quanto a conversa teria custado pela API, em dólares |
 
@@ -63,6 +63,8 @@ As medições atualizam em `session.measure` e ao concluir respostas. As cotas p
 
 A cota de sessão corresponde à janela de 5 horas **da conta**. O contexto mostra `context.tokens`, incluindo entrada normal e tokens de cache. É a janela atual, com o efeito da compactação; não é a soma de todos os tokens da conversa. Não calculamos tokens a partir do percentual arredondado.
 
+O relógio mostra, por exemplo, **`5h 8% (2h 14min)`**. A contagem usa `five_hour.resetsAt`, o horário de reset informado pelo Claude, e o relógio do host. Atualiza a cada minuto mesmo com a conversa parada, sem fazer requisições a modelos ou consultas HTTP. Os minutos são arredondados para cima; ao chegar ao horário informado, mostra `0min`, mantendo o percentual até o Claude informar uma nova medição. Sem horário válido, os parênteses não aparecem. O controle **Mostrar limite da sessão** também liga ou desliga essa contagem.
+
 A interface usa `AbovePrompt`. No Desktop, um SVG reúne texto e ícones, permitindo ajustar o tamanho do conjunto. No terminal, a mesma faixa usa texto. O mod preserva o conteúdo dos mods que vêm depois dele e cede a faixa aos controles nativos quando `hasSurvey` está ativo. Um mod anterior que substitua toda a faixa pode impedir a exibição.
 
 O ponto anterior, `SessionMode`, filtra SVGs no Desktop analisado e limita o texto a `24ch`. A versão 0.3.0 usa a faixa acima da caixa para oferecer os ícones e mais espaço, sem duplicar os indicadores no rodapé.
@@ -88,13 +90,19 @@ claude plugin test .
 node scripts/verify-desktop.mjs
 ```
 
-**18 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços.
+**20 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços. A contagem de reset é verificada com relógio simulado: atualização durante inatividade, novo horário recebido, fusos, minutos incompletos e dados ausentes.
 
 O teste `scripts/verify-desktop.mjs` também passou nas duas versões. Ele inicia um motor isolado e envia a solicitação `ui_render` usada pelo Desktop, sem solicitar respostas a modelos. Primeiro confirma que a composição inválida da 0.3.1 é recusada pela validação de produção; depois confirma que a faixa corrigida é aceita, com SVG e referência nativa preservada. Para escolher outro executável, defina `CLAUDE_CODE_EXECUTABLE`. A configuração temporária é isolada das configurações e servidores MCP do usuário.
 
 A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Uma verificação adicional em navegador sem interface reproduziu a moldura nativa e executou o normalizador e o gerador de estilos do Desktop analisado: a faixa permaneceu centralizada e cobriu o cinza nos dois temas, com tamanhos 8, 10 e 20 e em uma coluna estreita. Essas verificações não substituem uma conferência visual na conversa aberta.
 
 A moldura do Desktop reserva uma altura mínima de 40 px antes do zoom do aplicativo; diminuir o tamanho reduz os indicadores dentro desse espaço. A cobertura usa somente propriedades nativas de `Box` e a cor `memoryBackgroundColor`, que o Desktop mapeia para a superfície da conversa. Essa moldura pode mudar em versões futuras. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.3.5
+
+- Tempo até o reset da janela de 5 horas entre parênteses, junto ao percentual: **`5h 8% (2h 14min)`**.
+- Atualização automática a cada minuto com o relógio nativo, sem novas chamadas de API.
+- O horário vem do próprio Claude; não é deduzido do início da conversa.
 
 ## Mudanças em 0.3.4
 
