@@ -94,16 +94,18 @@ export function register(on, options = {}) {
     }
     // Keep other mods in the shared band; our tiny row stays closest to the input.
     const inherited = await next(e);
-    const children = [inherited, content].filter(Boolean);
     if (e.surface !== 'desktop')
-      return Box({ flexDirection: 'column', alignItems: 'center', width: '100%', children });
+      return Box({ flexDirection: 'column', alignItems: 'center', children: [inherited, content].filter(Boolean) });
     // The native band paints gray behind its padding. Cover that padding inside
     // our render region with the transcript's own color, in light and dark mode.
-    return Box({ flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', minHeight: 1,
+    const band = Box({ flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', minHeight: 1,
       width: '100%', backgroundColor: BAND_BACKGROUND, children: [
         Box({ flexDirection: 'column', alignItems: 'center',
           marginX: -2, marginY: -2, paddingX: 2, paddingY: 2,
-          backgroundColor: BAND_BACKGROUND, children })
+          backgroundColor: BAND_BACKGROUND, children: [content] })
       ] });
+    // Production validation rejects minHeight above a native engine reference.
+    // Keep next(e) beside our styled row, outside its custom styling.
+    return Box({ flexDirection: 'column', alignItems: 'stretch', children: [inherited, band].filter(Boolean) });
   });
 }

@@ -1,6 +1,6 @@
 # Kadenai's Style
 
-**v0.3.1 · Claude Code Desktop**
+**v0.3.2 · Claude Code Desktop**
 
 Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG na cor **#dd7654**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
 
@@ -85,13 +85,22 @@ Histórico anterior à ativação, modelos sem preço cadastrado e respostas sem
 claude plugin validate .claude-plugin/plugin.json --strict
 claude plugin validate .claude-plugin/marketplace.json --strict
 claude plugin test .
+node scripts/verify-desktop.mjs
 ```
 
 **18 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços.
 
+O teste `scripts/verify-desktop.mjs` também passou nas duas versões. Ele inicia um motor isolado e envia a solicitação `ui_render` usada pelo Desktop, sem solicitar respostas a modelos. Primeiro confirma que a composição inválida da 0.3.1 é recusada pela validação de produção; depois confirma que a faixa corrigida é aceita, com SVG e referência nativa preservada. Para escolher outro executável, defina `CLAUDE_CODE_EXECUTABLE`. A configuração temporária é isolada das configurações e servidores MCP do usuário.
+
 A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Uma verificação adicional em navegador sem interface reproduziu a moldura nativa e executou o normalizador e o gerador de estilos do Desktop analisado: a faixa permaneceu centralizada e cobriu o cinza nos dois temas, com tamanhos 8, 10 e 20 e em uma coluna estreita. Essas verificações não substituem uma conferência visual na conversa aberta.
 
 A moldura do Desktop reserva uma altura mínima de 40 px antes do zoom do aplicativo; diminuir o tamanho reduz os indicadores dentro desse espaço. A cobertura usa somente propriedades nativas de `Box` e a cor `memoryBackgroundColor`, que o Desktop mapeia para a superfície da conversa. Essa moldura pode mudar em versões futuras. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.3.2
+
+- Corrigida a faixa invisível introduzida na 0.3.1. O motor recusava a referência nativa de `next(e)` dentro de uma caixa com `minHeight` e voltava à faixa vazia do próprio Claude.
+- O conteúdo herdado agora fica ao lado da caixa personalizada, fora dos seus estilos. Fonte, centralização, fundo integrado ao tema e tamanho ajustável são preservados.
+- Acrescentada uma verificação pelo protocolo real do Desktop para detectar essa rejeição além dos testes de montagem.
 
 ## Mudanças em 0.3.1
 

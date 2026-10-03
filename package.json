@@ -1,10 +1,11 @@
 {
   "name": "kadenais-style",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "claude plugin test .",
+    "test:desktop": "node scripts/verify-desktop.mjs",
     "validate": "claude plugin validate .claude-plugin/plugin.json --strict"
   }
 }

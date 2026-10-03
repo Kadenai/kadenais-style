@@ -20,3 +20,5 @@ jobs:
           claude plugin validate .claude-plugin/marketplace.json --strict
       - name: Test hooks and rendering
         run: claude plugin test .
+      - name: Verify the real Desktop rendering protocol
+        run: node scripts/verify-desktop.mjs
