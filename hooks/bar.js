@@ -1,4 +1,7 @@
 export const COLOR = '#dd7654';
+export const FONT = "'Anthropic Sans','Segoe UI Variable','Segoe UI',Arial,sans-serif";
+// Desktop maps this native theme key to --cds-surface-1, the transcript surface.
+export const BAND_BACKGROUND = 'memoryBackgroundColor';
 
 export function fontSize(value) {
   return Number.isFinite(value) ? Math.max(8, Math.min(20, Math.round(value))) : 10;
@@ -31,12 +34,12 @@ export function svgBar(items, size, icons, availableWidth = Infinity) {
     }
     const drawing = icons[item.key].replace(/<svg\b[^>]*>|<\/svg>/g, '');
     groups.push(`<g transform="translate(${x} ${y + 2}) scale(${icon / 24})" fill="none" stroke="${COLOR}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${drawing}</g>`);
-    groups.push(`<text x="${x + icon + 4}" y="${y + rowHeight / 2}" dominant-baseline="central" textLength="${textWidth}" lengthAdjust="spacingAndGlyphs">${xml(item.text)}</text>`);
+    groups.push(`<text x="${x + icon + 4}" y="${y + rowHeight / 2}" dominant-baseline="central">${xml(item.text)}</text>`);
     x += itemWidth;
     width = Math.max(width, x + 1);
   }
   const height = items.length ? y + rowHeight : 0;
   const alt = items.map(item => item.label + ': ' + item.text + (item.partial ? ' (estimativa parcial)' : '')).join('; ');
-  const source = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="${COLOR}" font-family="'Cascadia Code',Consolas,monospace" font-size="${font}"><title>${xml(alt)}</title>${groups.join('')}</svg>`;
+  const source = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="${COLOR}" font-family="${FONT}" font-size="${font}" font-weight="600"><title>${xml(alt)}</title>${groups.join('')}</svg>`;
   return { source, alt, width, height };
 }

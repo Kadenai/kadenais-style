@@ -1,5 +1,5 @@
 import { preferences, emptyLedger, addRequest, indicators, FEATURES } from './lib.js';
-import { COLOR, fontSize, svgBar } from './bar.js';
+import { BAND_BACKGROUND, COLOR, fontSize, svgBar } from './bar.js';
 
 let ledger = emptyLedger();
 let sessionId = '';
@@ -94,6 +94,16 @@ export function register(on, options = {}) {
     }
     // Keep other mods in the shared band; our tiny row stays closest to the input.
     const inherited = await next(e);
-    return Box({ flexDirection: 'column', alignItems: 'flex-start', children: [inherited, content].filter(Boolean) });
+    const children = [inherited, content].filter(Boolean);
+    if (e.surface !== 'desktop')
+      return Box({ flexDirection: 'column', alignItems: 'center', width: '100%', children });
+    // The native band paints gray behind its padding. Cover that padding inside
+    // our render region with the transcript's own color, in light and dark mode.
+    return Box({ flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', minHeight: 1,
+      width: '100%', backgroundColor: BAND_BACKGROUND, children: [
+        Box({ flexDirection: 'column', alignItems: 'center',
+          marginX: -2, marginY: -2, paddingX: 2, paddingY: 2,
+          backgroundColor: BAND_BACKGROUND, children })
+      ] });
   });
 }

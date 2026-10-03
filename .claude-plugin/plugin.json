@@ -1,7 +1,7 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Indicadores compactos com SVGs acima da caixa de mensagem: tokens de contexto, cotas e custo equivalente de API.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",
@@ -30,8 +30,8 @@
       "default": true
     },
     "size": {
-      "type": "number", "title": "Tamanho dos indicadores",
-      "description": "Tamanho da letra em pixels, de 8 a 20. O padrão 10 é bem compacto; ícones e espaçamento acompanham o tamanho.",
+      "type": "number", "title": "Tamanho da faixa (px)",
+      "description": "Aumente ou diminua entre 8 e 20. O padrão 10 é bem compacto; texto, ícones e espaçamento mudam juntos.",
       "default": 10, "min": 8, "max": 20
     }
   }

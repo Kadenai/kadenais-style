@@ -1,8 +1,8 @@
 # Kadenai's Style
 
-**v0.3.0 · Claude Code Desktop**
+**v0.3.1 · Claude Code Desktop**
 
-Uma linha pequena acima da caixa de mensagem com quatro ícones SVG na cor **#dd7654**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente.
+Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG na cor **#dd7654**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
 
 ![Exemplo compacto, com números ilustrativos](assets/preview.png)
 
@@ -24,7 +24,9 @@ Na aba **Plugins** das configurações do Claude, abra **Kadenai's Style**. Há 
 - Mostrar limite semanal
 - Mostrar custo equivalente de API
 
-O campo **Tamanho dos indicadores** aceita de **8 a 20 pixels**, com padrão **10**. Ícones e espaço entre os dados acompanham esse tamanho. No padrão, o desenho ocupa **18 px de altura** e apenas a largura necessária aos valores; não há cartão, fundo nem segunda linha de legendas. Em uma coluna estreita, os indicadores podem passar para a linha seguinte para manter os valores legíveis.
+O campo **Tamanho da faixa (px)** aceita de **8 a 20 pixels**, com padrão **10**. Texto, ícones e espaço entre os dados acompanham esse tamanho. No padrão, o desenho ocupa **18 px de altura** e apenas a largura necessária aos valores. A faixa fica centralizada e cobre a moldura cinza nativa com a cor de fundo da conversa, acompanhando os temas claro e escuro. Em uma coluna estreita, os indicadores podem passar para a linha seguinte para manter os valores legíveis.
+
+A fonte usa peso 600, sem esticar artificialmente as letras. A lista de fontes prefere **Anthropic Sans**, quando disponível ao SVG, seguida de **Segoe UI Variable**, **Segoe UI** e Arial. O plugin não distribui arquivos de fontes.
 
 Esses campos são nativos de `userConfig`: o Claude desenha e salva os controles. Também aparecem em `/config` no terminal. O módulo recebe os valores em `register(on, options)` e recarrega quando a configuração muda. O tamanho em pixels se aplica ao SVG no Desktop; o terminal usa sua própria fonte.
 
@@ -87,7 +89,16 @@ claude plugin test .
 
 **18 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços.
 
-A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Os testes verificam eventos e árvores de interface; não substituem uma conferência visual na conversa aberta. O posicionamento e eventuais margens externas pertencem ao Desktop. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Uma verificação adicional em navegador sem interface reproduziu a moldura nativa e executou o normalizador e o gerador de estilos do Desktop analisado: a faixa permaneceu centralizada e cobriu o cinza nos dois temas, com tamanhos 8, 10 e 20 e em uma coluna estreita. Essas verificações não substituem uma conferência visual na conversa aberta.
+
+A moldura do Desktop reserva uma altura mínima de 40 px antes do zoom do aplicativo; diminuir o tamanho reduz os indicadores dentro desse espaço. A cobertura usa somente propriedades nativas de `Box` e a cor `memoryBackgroundColor`, que o Desktop mapeia para a superfície da conversa. Essa moldura pode mudar em versões futuras. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.3.1
+
+- Fonte sans-serif com peso 600 e proporções naturais.
+- Faixa centralizada acima da caixa de mensagem.
+- Moldura cinza coberta pela cor do tema, no claro e no escuro.
+- Campo de tamanho renomeado para **Tamanho da faixa (px)**, mantendo 8 a 20 px e padrão 10 px.
 
 ## Mudanças em 0.3.0
 

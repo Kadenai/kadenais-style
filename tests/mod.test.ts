@@ -83,8 +83,8 @@ test('each native switch removes its own indicator without custom panels', async
     let fallbacks = 0;
     const result = await render($, input, async () => { fallbacks++; return other; });
     if (mask) {
-      expect(result.children[0]).toEqual(other);
-      const svg = result.children[1];
+      expect(result.children[0].children[0]).toEqual(other);
+      const svg = result.children[0].children[1];
       expect(svg.type).toBe('Svg');
       expect(svg.props.height).toBe(size + 8);
       expect(svg.props.source).toContain('font-size="' + size + '"');
