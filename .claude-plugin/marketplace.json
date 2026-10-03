@@ -1,0 +1,13 @@
+{
+  "name": "kadenais-style",
+  "owner": { "name": "Kadenai" },
+  "metadata": { "description": "Mods pessoais Kadenai's Style para Claude Code Desktop." },
+  "plugins": [
+    {
+      "name": "kadenais-style",
+      "source": "./",
+      "description": "Indicadores configuráveis, custo de API e painel de recentes.",
+      "version": "0.1.0"
+    }
+  ]
+}

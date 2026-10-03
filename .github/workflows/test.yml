@@ -1,0 +1,22 @@
+name: Test mod
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code test runner
+        run: |
+          curl -fsSL https://claude.ai/install.sh -o /tmp/install-claude.sh
+          bash /tmp/install-claude.sh 2.1.288
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Validate plugin and marketplace
+        run: |
+          claude plugin validate .claude-plugin/plugin.json --strict
+          claude plugin validate .claude-plugin/marketplace.json --strict
+      - name: Test hooks and rendering
+        run: claude plugin test .

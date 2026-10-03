@@ -1,0 +1,10 @@
+{
+  "name": "kadenais-style",
+  "version": "0.1.0",
+  "description": "Kadenai's Style: contexto, cotas, custo equivalente de API e conversas sem projeto para Claude Code Desktop.",
+  "author": { "name": "Kadenai" },
+  "homepage": "https://github.com/Kadenai/kadenais-style",
+  "repository": "https://github.com/Kadenai/kadenais-style",
+  "license": "MIT",
+  "keywords": ["mods", "desktop", "usage", "context", "projectless"]
+}
