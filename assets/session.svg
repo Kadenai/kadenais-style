@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dd7654" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <title>Limite da sessão de cinco horas</title>
+  <circle cx="12" cy="12" r="8.5"/>
+  <path d="M12 7v5l3.25 2M12 3.5V5M20.5 12H19M12 20.5V19M3.5 12H5"/>
+  <circle cx="12" cy="12" r="1" fill="#dd7654" stroke="none"/>
+</svg>

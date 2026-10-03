@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing';
 import { modelPrice, requestCost } from '../hooks/prices.js';
-import { addRequest, emptyLedger, costInfo, indicators, footerText, DEFAULTS, preferences } from '../hooks/lib.js';
+import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, preferences } from '../hooks/lib.js';
 
 const response = { model: 'claude-opus-5-5-20260901', input_tokens: 1000, output_tokens: 100,
   cache_creation_input_tokens: 2000, cache_read_input_tokens: 5000 };
@@ -38,10 +38,10 @@ test('prefers the engine ledger so resumed history and actual billing modes coun
 
 test('distinguishes unavailable measurements from genuine zero use and honors each switch', () => {
   const unavailable = indicators({}, DEFAULTS, emptyLedger(), 0);
-  expect(unavailable[0].text).toBe('Contexto —');
+  expect(unavailable[0].text).toBe('— tokens');
   const known = indicators({ context: { percent: 0, tokens: 0, window: 200000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 0 }] }, DEFAULTS, emptyLedger(), 0);
-  expect(known[0].text).toBe('Contexto 0%');
-  expect(known[1].text).toBe('Sessão 0%');
+  expect(known[0].text).toBe('0 tokens');
+  expect(known[1].text).toBe('5h 0%');
   expect(indicators({}, { context: false, session: false, weekly: false, cost: false }, emptyLedger(), 0)).toEqual([]);
 });
 
@@ -56,18 +56,17 @@ test('native configuration honors all 16 combinations of independent switches', 
   expect(preferences({ context: 'false' })).toEqual(DEFAULTS);
 });
 
-test('keeps all four indicators inside the compact footer at full quota and large costs', () => {
-  const measurement = { context: { percent: 100 }, rateLimits:
-    [{ kind: 'five_hour', percentUsed: 100 }, { kind: 'seven_day', percentUsed: 100 }] };
-  for (const usd of [0, 0.000001, 0.03, 0.99, 1.2345, 99.99, 999.99, 12345.67, 1234567.89]) {
-    for (const partial of [false, true]) {
-      const ledger = { ...emptyLedger(), usd, requests: 1, sinceActivation: partial };
-      const text = footerText(measurement, DEFAULTS, ledger);
-      expect(text.startsWith('C100% 5h100% 7d100%')).toBe(true);
-      expect(text.length <= 24).toBe(true);
-      expect(text.endsWith('*')).toBe(partial);
-      if (usd > 0) expect(text.endsWith('$0') || text.endsWith('$0*')).toBe(false);
-    }
+test('shows exact current context tokens and never derives them from a rounded percentage', () => {
+  const items = indicators({ context: { tokens: 19451, percent: 9, window: 200000 } }, DEFAULTS, emptyLedger());
+  expect(items[0].text).toBe('19.451 tokens');
+  expect(items[0].value).toBe(19451);
+  expect(indicators({ context: { percent: 9, window: 200000 } }, DEFAULTS, emptyLedger())[0].text).toBe('— tokens');
+});
+
+test('keeps tiny nonzero API costs distinct from zero and marks partial estimates', () => {
+  for (const [usd, text] of [[0, '≈ US$ 0,00'], [0.000001, '≈ US$ <0,01'], [1.2345, '≈ US$ 1,23']] as const) {
+    expect(indicators({ cost: { usd } }, DEFAULTS, emptyLedger())[3].text).toBe(text);
   }
-  expect(footerText({}, DEFAULTS, emptyLedger())).toBe('C— 5h— 7d— $—');
+  const ledger = { ...emptyLedger(), usd: 0.41, requests: 1, sinceActivation: true };
+  expect(indicators({}, DEFAULTS, ledger)[3].text).toBe('≈ US$ 0,41*');
 });

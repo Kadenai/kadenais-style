@@ -16,6 +16,11 @@ export function percent(value) {
   return Number.isFinite(value) ? value.toFixed(value % 1 ? 1 : 0) + '%' : '—';
 }
 
+export function tokenCount(value) {
+  return Number.isFinite(value) && value >= 0
+    ? Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '—';
+}
+
 export function emptyLedger() {
   return { usd: 0, requests: 0, unpriced: 0, seen: [], models: {}, sinceActivation: false };
 }
@@ -50,51 +55,19 @@ export function costInfo(usage, ledger) {
 export function indicators(usage, prefs, ledger) {
   const result = [];
   const context = usage?.context ?? {};
-  if (prefs.context) result.push({ key: 'context', value: context.percent, text:
-    'Contexto ' + percent(context.percent) });
-  for (const [key, kind, label] of [['session', 'five_hour', 'Sessão'], ['weekly', 'seven_day', 'Semana']]) {
+  if (prefs.context) result.push({ key: 'context', label: 'Contexto', value: context.tokens, text:
+    tokenCount(context.tokens) + ' tokens' });
+  for (const [key, kind, label, short] of [['session', 'five_hour', 'Sessão (5 horas)', '5h'], ['weekly', 'seven_day', 'Semana', '7d']]) {
     if (!prefs[key]) continue;
     const window = usage?.rateLimits?.find(w => w.kind === kind);
-    result.push({ key, value: window?.percentUsed, text: label + ' ' + percent(window?.percentUsed) });
+    result.push({ key, label, value: window?.percentUsed, text: short + ' ' + percent(window?.percentUsed) });
   }
   if (prefs.cost) {
     const cost = costInfo(usage, ledger);
-    result.push({ key: 'cost', value: cost.usd, partial: cost.partial,
-      text: 'API ≈ ' + (cost.usd === null ? '—' : 'US$ ' + cost.usd.toFixed(4)) + (cost.partial ? ' (parcial)' : '') });
+    const amount = cost.usd === null ? '—' : cost.usd > 0 && cost.usd < 0.01
+      ? '<0,01' : cost.usd.toFixed(2).replace('.', ',');
+    result.push({ key: 'cost', label: 'Custo equivalente de API', value: cost.usd, partial: cost.partial,
+      text: '≈ US$ ' + amount + (cost.partial ? '*' : '') });
   }
   return result;
-}
-
-function compactUsd(usd, width) {
-  if (usd === null) return '$—';
-  if (usd === 0) return '$0';
-  const candidates = [2, 1].map(decimals => '$' + usd.toFixed(decimals))
-    .filter(text => Number(text.slice(1)) > 0);
-  if (usd < 1) candidates.push(usd < 0.01 ? '<1¢' : Math.round(usd * 100) + '¢');
-  if (Math.round(usd) > 0) candidates.push('$' + usd.toFixed(0));
-  for (const [unit, scale] of [['k', 1e3], ['M', 1e6], ['B', 1e9], ['T', 1e12]]) {
-    if (usd >= scale) for (const decimals of [1, 0])
-      candidates.push('$' + (usd / scale).toFixed(decimals) + unit);
-  }
-  candidates.push('$' + usd.toExponential(0).replace('e+', 'e'));
-  return candidates.find(text => text.length <= width) || candidates[candidates.length - 1];
-}
-
-export function footerText(usage, prefs, ledger) {
-  const items = indicators(usage, prefs, ledger);
-  const labels = { context: 'C', session: '5h', weekly: '7d' };
-  const parts = items.filter(item => item.key !== 'cost').map(item =>
-    labels[item.key] + (Number.isFinite(item.value) ? Math.round(item.value) + '%' : '—'));
-  const cost = items.find(item => item.key === 'cost');
-  if (cost) {
-    const mark = cost.partial ? '*' : '';
-    // This Desktop draws SessionMode in one line, capped at 24ch.
-    const width = 24 - parts.join(' ').length - (parts.length ? 1 : 0) - mark.length;
-    const price = compactUsd(cost.value, width);
-    // The currency sign is already a separator when one more cell is needed.
-    if (price.length > width && parts.length)
-      return parts.join(' ') + compactUsd(cost.value, width + 1) + mark;
-    parts.push(price + mark);
-  }
-  return parts.join(' ');
 }

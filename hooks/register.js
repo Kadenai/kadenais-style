@@ -1,4 +1,5 @@
-import { preferences, emptyLedger, addRequest, footerText } from './lib.js';
+import { preferences, emptyLedger, addRequest, indicators, FEATURES } from './lib.js';
+import { COLOR, fontSize, svgBar } from './bar.js';
 
 let ledger = emptyLedger();
 let sessionId = '';
@@ -20,6 +21,8 @@ async function loadSession($) {
 
 export function register(on, options = {}) {
   const prefs = preferences(options);
+  const size = fontSize(options.size);
+  let icons;
 
   on('session.start', async ($, e, next) => {
     await loadSession($);
@@ -75,11 +78,22 @@ export function register(on, options = {}) {
     return next(e);
   });
 
-  on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    const text = footerText(usage, prefs, ledger);
-    if (!text) return next(e);
-    // Desktop ignores the native engine reference here. Draw actual text.
-    const { Text } = $.ui.resolve(e);
-    return Text({ children: [text] });
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const items = indicators(usage, prefs, ledger);
+    if (e.props.hasSurvey || !items.length) return next(e);
+    const { Box, Text, Svg } = $.ui.resolve(e);
+    let content;
+    if (e.surface === 'desktop') {
+      // Read only our four bundled icons, once per module load.
+      icons ??= Promise.all(FEATURES.map(async key =>
+        [key, await $.fs.read(`${$.plugin.root}/assets/${key}.svg`)])).then(Object.fromEntries);
+      const drawing = svgBar(items, size, await icons, e.props.bodyColumns * 8);
+      content = Svg(drawing);
+    } else {
+      content = Text({ color: COLOR, children: [items.map(item => item.text).join(' · ')] });
+    }
+    // Keep other mods in the shared band; our tiny row stays closest to the input.
+    const inherited = await next(e);
+    return Box({ flexDirection: 'column', alignItems: 'flex-start', children: [inherited, content].filter(Boolean) });
   });
 }

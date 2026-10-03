@@ -1,8 +1,8 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.2.1",
-  "description": "Contexto, cotas de sessão e semana e custo equivalente de API no rodapé do Claude Code Desktop.",
+  "version": "0.3.0",
+  "description": "Indicadores compactos com SVGs acima da caixa de mensagem: tokens de contexto, cotas e custo equivalente de API.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",
   "repository": "https://github.com/Kadenai/kadenais-style",
@@ -11,7 +11,7 @@
   "userConfig": {
     "context": {
       "type": "boolean", "title": "Mostrar contexto",
-      "description": "C: percentual usado da janela de contexto, arredondado para exibição no rodapé.",
+      "description": "Número de tokens utilizados na janela de contexto atual, conforme a última resposta do Claude.",
       "default": true
     },
     "session": {
@@ -26,8 +26,13 @@
     },
     "cost": {
       "type": "boolean", "title": "Mostrar custo equivalente de API",
-      "description": "$: custo equivalente de API em USD. ¢ = centavos; k = mil; M = milhão; * = estimativa parcial. Não é uma cobrança do plano.",
+      "description": "Custo equivalente de API em USD. * indica estimativa parcial. Não é uma cobrança do plano.",
       "default": true
+    },
+    "size": {
+      "type": "number", "title": "Tamanho dos indicadores",
+      "description": "Tamanho da letra em pixels, de 8 a 20. O padrão 10 é bem compacto; ícones e espaçamento acompanham o tamanho.",
+      "default": 10, "min": 8, "max": 20
     }
   }
 }
