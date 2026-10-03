@@ -1,4 +1,4 @@
-import { preferences, emptyLedger, addRequest, indicators } from './lib.js';
+import { preferences, emptyLedger, addRequest, footerText } from './lib.js';
 
 let ledger = emptyLedger();
 let sessionId = '';
@@ -76,9 +76,10 @@ export function register(on, options = {}) {
   });
 
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    // Rewrite native footer labels without a nested row or plugin controls.
-    const labels = indicators(usage, prefs, ledger).map(item => item.text);
-    if (!labels.length) return next(e);
-    return next({ ...e, props: { ...e.props, modes: [...e.props.modes, ...labels] } });
+    const text = footerText(usage, prefs, ledger);
+    if (!text) return next(e);
+    // Desktop ignores the native engine reference here. Draw actual text.
+    const { Text } = $.ui.resolve(e);
+    return Text({ children: [text] });
   });
 }

@@ -23,9 +23,8 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('command.register', ($, e) => { commands.push(e.name); return { value: { command: e.name } }; });
   on('ui.render', ($, e) => {
     renders.push(e);
-    // The engine reads modes. Do not substitute a constant tree that ignores props.
-    return { type: 'Box', props: { flexDirection: 'row' }, children:
-      e.props.modes.map(text => ({ type: 'Text', props: {}, children: [text] })) };
+    // SessionMode's Desktop base draw is a reference, not Text built from modes.
+    return { type: 'engine', ref: 0 };
   });
   on('session.measure', ($, e) => ({ changed: e.changed }));
   on('prompt.submit', ($, e) => ({ text: e.text }));
@@ -33,16 +32,15 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   return { saved, commands, renders, identity };
 }
 
-test('passes all four measurements to the native footer without plugin buttons', async ($, on) => {
+test('draws all four measurements as explicit text without relying on the native footer', async ($, on) => {
   const f = fixture(on);
   await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
   const ui = await $.ui.mount({ ...footer, surface: 'desktop' });
-  for (const text of ['Default', 'Contexto 42%', 'Sessão 23%', 'Semana 61%', 'API ≈ US$ 1.2345'])
-    expect(await ui.find({ type: 'Text', text })).toBeDefined();
+  expect(await ui.find({ type: 'Text', text: 'C42% 5h23% 7d61% $1.23' })).toBeDefined();
   expect(await ui.find({ type: 'Button' })).toBeUndefined();
   expect(f.commands).toEqual([]);
-  expect(f.renders[f.renders.length - 1].props.modes).toEqual(
-    ['Default', 'Contexto 42%', 'Sessão 23%', 'Semana 61%', 'API ≈ US$ 1.2345']);
+  // A props-only rewrite would reach this engine-reference fallback and fail.
+  expect(f.renders).toEqual([]);
 });
 
 test('native configuration is used by the registered footer hook, without custom panels', async () => {
@@ -56,9 +54,17 @@ test('native configuration is used by the registered footer hook, without custom
       if (event === 'ui.render') render = handler;
     }, options);
     const input = { component: 'SessionMode', props: { modes: ['Default'] } };
-    const result = await render({}, input, async e => e);
-    const labels = ['Contexto —', 'Sessão —', 'Semana —', 'API ≈ —'];
-    expect(result.props.modes).toEqual(['Default', ...labels.filter((label, index) => options[keys[index]])]);
+    const $ = { ui: { resolve: () => ({ Text: ({ children }) => ({ type: 'Text', props: {}, children }) }) } };
+    let fallbacks = 0;
+    const result = await render($, input, async () => { fallbacks++; return { type: 'engine', ref: 0 }; });
+    const labels = ['C—', '5h—', '7d—', '$—'].filter((label, index) => options[keys[index]]);
+    if (labels.length) {
+      expect(result).toEqual({ type: 'Text', props: {}, children: [labels.join(' ')] });
+      expect(fallbacks).toBe(0);
+    } else {
+      expect(result).toEqual({ type: 'engine', ref: 0 });
+      expect(fallbacks).toBe(1);
+    }
     expect(input.props.modes).toEqual(['Default']);
     expect(registrations.filter(r => r.event === 'ui.render')).toEqual(
       [{ event: 'ui.render', matcher: { component: 'SessionMode' } }]);
@@ -71,8 +77,7 @@ test('updates quota measurements and keeps unavailable data distinct from zero',
   await $.session.measure({ context: { window: 200000, percent: 90 }, rateLimits: [{ kind: 'five_hour', percentUsed: 99 }], changed: ['context', 'rateLimits'] });
   for (const surface of ['desktop', 'terminal'] as const) {
     const ui = await $.ui.mount({ ...footer, surface });
-    for (const text of ['Contexto 90%', 'Sessão 99%', 'Semana —', 'API ≈ —'])
-      expect(await ui.find({ type: 'Text', text })).toBeDefined();
+    expect(await ui.find({ type: 'Text', text: 'C90% 5h99% 7d— $—' })).toBeDefined();
     expect(await ui.find({ type: 'Button' })).toBeUndefined();
     await ui.unmount();
   }

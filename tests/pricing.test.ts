@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing';
 import { modelPrice, requestCost } from '../hooks/prices.js';
-import { addRequest, emptyLedger, costInfo, indicators, DEFAULTS, preferences } from '../hooks/lib.js';
+import { addRequest, emptyLedger, costInfo, indicators, footerText, DEFAULTS, preferences } from '../hooks/lib.js';
 
 const response = { model: 'claude-opus-5-5-20260901', input_tokens: 1000, output_tokens: 100,
   cache_creation_input_tokens: 2000, cache_read_input_tokens: 5000 };
@@ -54,4 +54,20 @@ test('native configuration honors all 16 combinations of independent switches', 
       .toEqual(keys.filter(key => options[key]));
   }
   expect(preferences({ context: 'false' })).toEqual(DEFAULTS);
+});
+
+test('keeps all four indicators inside the compact footer at full quota and large costs', () => {
+  const measurement = { context: { percent: 100 }, rateLimits:
+    [{ kind: 'five_hour', percentUsed: 100 }, { kind: 'seven_day', percentUsed: 100 }] };
+  for (const usd of [0, 0.000001, 0.03, 0.99, 1.2345, 99.99, 999.99, 12345.67, 1234567.89]) {
+    for (const partial of [false, true]) {
+      const ledger = { ...emptyLedger(), usd, requests: 1, sinceActivation: partial };
+      const text = footerText(measurement, DEFAULTS, ledger);
+      expect(text.startsWith('C100% 5h100% 7d100%')).toBe(true);
+      expect(text.length <= 24).toBe(true);
+      expect(text.endsWith('*')).toBe(partial);
+      if (usd > 0) expect(text.endsWith('$0') || text.endsWith('$0*')).toBe(false);
+    }
+  }
+  expect(footerText({}, DEFAULTS, emptyLedger())).toBe('C— 5h— 7d— $—');
 });

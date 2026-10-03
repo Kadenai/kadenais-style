@@ -1,7 +1,7 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Contexto, cotas de sessão e semana e custo equivalente de API no rodapé do Claude Code Desktop.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",
@@ -11,22 +11,22 @@
   "userConfig": {
     "context": {
       "type": "boolean", "title": "Mostrar contexto",
-      "description": "Exibe no rodapé o percentual usado da janela de contexto da conversa.",
+      "description": "C: percentual usado da janela de contexto, arredondado para exibição no rodapé.",
       "default": true
     },
     "session": {
       "type": "boolean", "title": "Mostrar limite da sessão",
-      "description": "Exibe no rodapé o percentual usado da cota de 5 horas da conta.",
+      "description": "5h: percentual usado da cota de 5 horas da conta.",
       "default": true
     },
     "weekly": {
       "type": "boolean", "title": "Mostrar limite semanal",
-      "description": "Exibe no rodapé o percentual usado da cota semanal da conta.",
+      "description": "7d: percentual usado da cota semanal da conta.",
       "default": true
     },
     "cost": {
       "type": "boolean", "title": "Mostrar custo equivalente de API",
-      "description": "Estima em dólares quanto esta conversa teria custado pelos preços da API. Não é uma cobrança do plano.",
+      "description": "$: custo equivalente de API em USD. ¢ = centavos; k = mil; M = milhão; * = estimativa parcial. Não é uma cobrança do plano.",
       "default": true
     }
   }

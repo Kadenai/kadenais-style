@@ -59,7 +59,42 @@ export function indicators(usage, prefs, ledger) {
   }
   if (prefs.cost) {
     const cost = costInfo(usage, ledger);
-    result.push({ key: 'cost', text: 'API ≈ ' + (cost.usd === null ? '—' : 'US$ ' + cost.usd.toFixed(4)) + (cost.partial ? ' (parcial)' : '') });
+    result.push({ key: 'cost', value: cost.usd, partial: cost.partial,
+      text: 'API ≈ ' + (cost.usd === null ? '—' : 'US$ ' + cost.usd.toFixed(4)) + (cost.partial ? ' (parcial)' : '') });
   }
   return result;
+}
+
+function compactUsd(usd, width) {
+  if (usd === null) return '$—';
+  if (usd === 0) return '$0';
+  const candidates = [2, 1].map(decimals => '$' + usd.toFixed(decimals))
+    .filter(text => Number(text.slice(1)) > 0);
+  if (usd < 1) candidates.push(usd < 0.01 ? '<1¢' : Math.round(usd * 100) + '¢');
+  if (Math.round(usd) > 0) candidates.push('$' + usd.toFixed(0));
+  for (const [unit, scale] of [['k', 1e3], ['M', 1e6], ['B', 1e9], ['T', 1e12]]) {
+    if (usd >= scale) for (const decimals of [1, 0])
+      candidates.push('$' + (usd / scale).toFixed(decimals) + unit);
+  }
+  candidates.push('$' + usd.toExponential(0).replace('e+', 'e'));
+  return candidates.find(text => text.length <= width) || candidates[candidates.length - 1];
+}
+
+export function footerText(usage, prefs, ledger) {
+  const items = indicators(usage, prefs, ledger);
+  const labels = { context: 'C', session: '5h', weekly: '7d' };
+  const parts = items.filter(item => item.key !== 'cost').map(item =>
+    labels[item.key] + (Number.isFinite(item.value) ? Math.round(item.value) + '%' : '—'));
+  const cost = items.find(item => item.key === 'cost');
+  if (cost) {
+    const mark = cost.partial ? '*' : '';
+    // This Desktop draws SessionMode in one line, capped at 24ch.
+    const width = 24 - parts.join(' ').length - (parts.length ? 1 : 0) - mark.length;
+    const price = compactUsd(cost.value, width);
+    // The currency sign is already a separator when one more cell is needed.
+    if (price.length > width && parts.length)
+      return parts.join(' ') + compactUsd(cost.value, width + 1) + mark;
+    parts.push(price + mark);
+  }
+  return parts.join(' ');
 }

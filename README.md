@@ -1,21 +1,23 @@
 # Kadenai's Style
 
-**v0.2.0 · Claude Code 2.1.287+**
+**v0.2.1 · Claude Code 2.1.287+**
 
 Contexto, limites de uso e estimativa de custo da API no rodapé do **Claude Code Desktop**, exibidos automaticamente.
 
 ```text
-Contexto 42%   Sessão 23%   Semana 61%   API ≈ US$ 1.2345
+C42% 5h23% 7d61% $1.23
 ```
 
 Valores de exemplo. Os indicadores usam as medições da conversa e da conta, sem precisar abrir um painel ou clicar em um botão.
 
 | Indicador | O que mostra |
 | --- | --- |
-| Contexto | Percentual usado da janela de contexto atual |
-| Sessão | Percentual usado da cota de 5 horas da conta |
-| Semana | Percentual usado da cota semanal da conta |
-| API | Quanto a conversa teria custado em dólares pela API |
+| C | Percentual usado da janela de contexto atual |
+| 5h | Percentual usado da cota de 5 horas da conta |
+| 7d | Percentual usado da cota semanal da conta |
+| $ | Quanto a conversa teria custado em dólares pela API |
+
+Os percentuais são arredondados para números inteiros no rodapé. O custo se adapta ao espaço: `¢` significa centavos de dólar, `k` significa mil, `M` milhão, `B` bilhão e `T` trilhão. `*` indica uma estimativa parcial. O valor armazenado mantém sua precisão; apenas a exibição é abreviada.
 
 ## Configurar
 
@@ -62,7 +64,7 @@ O mod atualiza as medições em `session.measure` e ao concluir respostas. As co
 
 A cota de sessão corresponde à janela de 5 horas **da conta**, e não a um limite exclusivo do chat. O contexto corresponde à janela atual, incluindo o efeito da compactação.
 
-A integração visual reescreve os rótulos `modes` do ponto nativo `SessionMode`. Não cria uma segunda linha de elementos nem componentes clicáveis. Os controles de permissões que o Claude já oferece continuam pertencendo ao aplicativo.
+A integração retorna um elemento `Text` explícito no ponto `SessionMode`. No Desktop analisado, reescrever apenas `modes` e retornar a referência ao desenho nativo não exibe os dados. O aplicativo também transforma esse ponto em uma única linha com largura máxima de `24ch`; por isso, o mod usa rótulos compactos e abrevia o custo quando necessário. Os controles de permissões que o Claude já oferece continuam pertencendo ao aplicativo.
 
 ## Custo equivalente de API
 
@@ -86,16 +88,24 @@ claude plugin validate .claude-plugin/marketplace.json --strict
 claude plugin test .
 ```
 
-**12 testes locais passaram** no Claude Code 2.1.288. Cobrem os quatro valores no rodapé, ausência de botões, as 16 combinações de configuração, dados indisponíveis, streaming, subagentes, retomada e cálculo de preços.
+**13 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 distribuído com o Desktop 2.19675.0. Cobrem texto explícito no rodapé, ausência de botões, as 16 combinações de configuração, dados indisponíveis, espaço para os quatro valores, streaming, subagentes, retomada e cálculo de preços.
 
-Os testes usam o kit oficial `claude-code/testing` e verificam eventos, propriedades e árvores de interface. **A aparência final desta versão no aplicativo Desktop ainda precisa de confirmação visual**; os testes não medem recorte ou espaço disponível na janela.
+Os testes usam o kit oficial `claude-code/testing` e verificam eventos e árvores de interface. O desenho base do rodapé retorna `{ type: 'engine', ref: 0 }` no teste, como no Desktop, sem substituir essa referência por textos inventados. Uma regressão à integração da versão 0.2.0 faz o teste falhar.
+
+Também verificamos a árvore retornada usando as funções de conversão do código de interface carregado pelo Desktop. Essa verificação confirma que os indicadores são reconhecidos como conteúdo visível; **não substitui uma conferência visual da conversa aberta no aplicativo**.
 
 O posicionamento final é controlado pelo Desktop. Outros mods que alteram `SessionMode` podem interferir. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.2.1
+
+- Corrigido o rodapé vazio: os indicadores agora são elementos de texto explícitos.
+- Rótulos e custo compactados para o espaço disponível no Desktop.
+- Removido o simulador de desenho que deixava os testes passarem sem comprovar texto real.
 
 ## Mudanças em 0.2.0
 
 - Configuração movida para os quatro campos nativos do plugin.
-- Rodapé integrado por rótulos nativos, sem botões ou painéis do mod.
+- Removidos os botões e painéis do mod; a integração visual desta versão foi corrigida em 0.2.1.
 - Removidos recentes, coleta de títulos e caminhos, comandos e iniciador de chat sem projeto.
 - Preservado o cálculo de custo por conversa e subagentes.
 
