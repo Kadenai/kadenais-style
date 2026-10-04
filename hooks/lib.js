@@ -32,6 +32,18 @@ export function resetCountdown(resetsAt, now) {
   return hours ? hours + 'h' + (minutes ? ' ' + minutes + 'min' : '') : minutes + 'min';
 }
 
+export function footerText(usage, prefs, now) {
+  const parts = [];
+  if (prefs.context) parts.push('Contexto: ' + tokenCount(usage?.context?.tokens));
+  if (prefs.session) {
+    const window = usage?.rateLimits?.find(w => w.kind === 'five_hour');
+    const remaining = resetCountdown(window?.resetsAt, now);
+    parts.push('Sessão: ' + percent(window?.percentUsed)
+      + (remaining === null ? '' : ' (' + remaining.replace(/ /g, '') + ')'));
+  }
+  return parts.join(' | ');
+}
+
 export function emptyLedger() {
   return { usd: 0, requests: 0, unpriced: 0, seen: [], models: {}, sinceActivation: false };
 }

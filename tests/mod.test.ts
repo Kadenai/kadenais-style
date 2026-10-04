@@ -15,6 +15,13 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   const commands: string[] = [];
   const renders: any[] = [];
   const reads: string[] = [];
+  const statuses: (string | undefined)[] = [];
+  const config: Record<string, any> = { context: true, session: true, weekly: true, cost: true, size: 10, position: 'acima' };
+  const configWrites: any[] = [];
+  const denials: Record<string, string> = {};
+  const nativeConfig = { available: true };
+  const files = new Map<string, string>();
+  const sources: Record<string, any> = { policy: {}, flag: {} };
   const clock = mock.clock(on, { now: 1_791_046_800_000 });
   on('store.get', ($, e) => ({ value: saved.get(e.key) }));
   on('store.set', ($, e) => { saved.set(e.key, e.value); return { value: undefined }; });
@@ -24,8 +31,27 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('session.start', () => ({ cwd: CWD }));
   on('classic.SessionStart', () => ({}));
   on('command.register', ($, e) => { commands.push(e.name); return { value: { command: e.name } }; });
+  on('config.list', () => ({ value: (nativeConfig.available ? Object.entries(config) : []).map(([key, value]) => ({
+    key: 'kadenais-style.' + key, label: key,
+    kind: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'choice',
+    value, ...(key === 'position' ? { options: ['acima', 'embaixo'] } : {}),
+    provider: { plugin: 'kadenais-style', tier: 'append' }, isLocked: false
+  })) }));
+  on('config.set', ($, e) => {
+    if (denials[e.key]) return { deny: denials[e.key] };
+    configWrites.push({ key: e.key, value: e.value });
+    config[e.key.slice('kadenais-style.'.length)] = e.value;
+    return { value: e.value };
+  });
+  on('ui.status', ($, e) => { statuses.push(e.text); return { value: undefined }; });
+  on('settings.read', ($, e) => ({ value: sources[e.source || 'effective'] || {} }));
+  on('env.get', ($, e) => ({ value: e.name === 'CLAUDE_CONFIG_DIR' ? 'C:/isolated' : undefined }));
+  on('fs.exists', ($, e) => ({ value: files.has(e.path.split(/[\\/]/).at(-1)) }));
+  on('fs.write', ($, e) => { files.set(e.path.split(/[\\/]/).at(-1), e.text); return { value: undefined }; });
   on('fs.read', ($, e) => {
     reads.push(e.path);
+    const path = e.path.split(/[\\/]/).at(-1);
+    if (files.has(path)) return { value: files.get(path) };
     return { value: '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8"/></svg>' };
   });
   on('ui.render', ($, e) => {
@@ -36,7 +62,8 @@ function fixture(on, seed: Record<string, unknown> = {}) {
   on('session.measure', ($, e) => ({ changed: e.changed }));
   on('prompt.submit', ($, e) => ({ text: e.text }));
   on('turn.complete', () => ({ text: '' }));
-  return { saved, commands, renders, identity, reads, clock };
+  return { saved, commands, renders, identity, reads, clock, statuses, config, configWrites, denials,
+    nativeConfig, files, sources };
 }
 
 test('draws a tiny SVG above the input, preserves other mods and reads icons only once', async ($, on) => {
@@ -52,7 +79,7 @@ test('draws a tiny SVG above the input, preserves other mods and reads icons onl
   expect(svg.props.source).toContain('font-size="10"');
   expect(await ui.find({ type: 'Text', text: 'Other mod' })).toBeDefined();
   expect(await ui.find({ type: 'Button' })).toBeUndefined();
-  expect(f.commands).toEqual([]);
+  expect(f.commands).toEqual(['kadenai-style']);
   await ui.unmount();
   const again = await $.ui.mount({ ...band, surface: 'desktop' });
   expect(await again.find({ type: 'Svg' })).toBeDefined();
@@ -97,8 +124,139 @@ test('each native switch removes its own indicator without custom panels', async
     expect(fallbacks).toBe(1);
     expect(registrations.filter(r => r.event === 'ui.render')).toEqual(
       [{ event: 'ui.render', matcher: { component: 'AbovePrompt' } }]);
-    expect(registrations.some(r => r.event === 'command.run')).toBe(false);
+    expect(registrations.filter(r => r.event === 'command.run')).toEqual(
+      [{ event: 'command.run', matcher: { command: 'kadenai-style' } }]);
   }
+});
+
+test('the command moves indicators below the prompt without hiding Fables or losing the upper settings', async ($, on) => {
+  const f = fixture(on);
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  const status = await $.command.run({ command: 'kadenai-style' });
+  expect(status.text).toContain('Posição: acima');
+  expect(status.text).toContain('/kadenai-style acima | embaixo');
+  expect(f.configWrites).toEqual([]);
+  await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+  await $.session.measure({ ...usage, rateLimits: [
+    { kind: 'five_hour', percentUsed: 23, resetsAt: new Date(f.clock.now() + 134 * 60000).toISOString() }
+  ], changed: ['rateLimits'] });
+  expect(f.statuses.at(-1)).toBe('Contexto: 84.000 | Sessão: 23% (2h14min)');
+  expect(f.configWrites).toEqual([{ key: 'kadenais-style.position', value: 'embaixo' }]);
+  const ui = await $.ui.mount({ ...band, surface: 'desktop' });
+  expect(await ui.find({ type: 'Svg' })).toBeUndefined();
+  expect(await ui.find({ type: 'Text', text: 'Other mod' })).toBeDefined();
+  expect(await ui.find({ type: 'Button' })).toBeUndefined();
+  expect(f.reads).toEqual([]);
+  await $.command.run({ command: 'kadenai-style', args: 'posição acima' });
+  expect(f.statuses.at(-1)).toBeUndefined();
+  expect((await ui.find({ type: 'Svg' })).props.alt).toContain('Custo equivalente de API');
+  expect(f.config.weekly).toBe(true);
+  expect(f.config.cost).toBe(true);
+  await ui.unmount();
+});
+
+test('command switches and size share native configuration and use its latest values', async ($, on) => {
+  const f = fixture(on);
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  const ui = await $.ui.mount({ ...band, surface: 'desktop' });
+  await $.command.run({ command: 'kadenai-style', args: 'tamanho 16' });
+  expect((await ui.find({ type: 'Svg' })).props.height).toBe(24);
+  await $.command.run({ command: 'kadenai-style', args: 'semana off' });
+  expect((await ui.find({ type: 'Svg' })).props.alt.includes('Semana:')).toBe(false);
+  await $.command.run({ command: 'kadenai-style', args: 'custo alternar' });
+  expect((await ui.find({ type: 'Svg' })).props.alt.includes('Custo equivalente')).toBe(false);
+  // Simulate a value last changed in the native Plugins tab, rather than the command.
+  f.config.context = false;
+  await $.command.run({ command: 'kadenai-style', args: 'contexto' });
+  expect(f.config.context).toBe(true);
+  await $.command.run({ command: 'kadenai-style', args: 'sessão off' });
+  expect((await ui.find({ type: 'Svg' })).props.alt.includes('Sessão')).toBe(false);
+  expect(f.configWrites.map(row => row.key)).toEqual(['kadenais-style.size', 'kadenais-style.weekly',
+    'kadenais-style.cost', 'kadenais-style.context', 'kadenais-style.session']);
+  await ui.unmount();
+});
+
+test('invalid commands and refused native writes leave settings intact', async ($, on) => {
+  const f = fixture(on);
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  for (const args of ['tamanho 7', 'tamanho 21', 'tamanho 10px', 'tamanho 10.5', 'posição centro',
+    'contexto maybe', 'semana on extra', 'desconhecido', '__proto__', 'constructor']) {
+    const result = await $.command.run({ command: 'kadenai-style', args });
+    expect(result.text.includes('Salvo')).toBe(false);
+  }
+  expect(f.configWrites).toEqual([]);
+  f.denials['kadenais-style.position'] = 'Blocked by policy';
+  const denied = await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+  expect(denied.text).toContain('Blocked by policy');
+  expect(f.config.position).toBe('acima');
+  expect(f.statuses.at(-1)).toBeUndefined();
+  const ui = await $.ui.mount({ ...band, surface: 'desktop' });
+  expect(await ui.find({ type: 'Svg' })).toBeDefined();
+  await ui.unmount();
+});
+
+test('the footer countdown updates while idle, respects its switches and keeps unknown values honest', async ($, on) => {
+  const f = fixture(on);
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+  await $.session.measure({ ...usage, rateLimits: [
+    { kind: 'five_hour', percentUsed: 23, resetsAt: new Date(f.clock.now() + 134 * 60000).toISOString() }
+  ], changed: ['rateLimits'] });
+  await f.clock.advance(60000);
+  expect(f.statuses.at(-1)).toBe('Contexto: 84.000 | Sessão: 23% (2h13min)');
+  await $.command.run({ command: 'kadenai-style', args: 'contexto off' });
+  expect(f.statuses.at(-1)).toBe('Sessão: 23% (2h13min)');
+  await $.command.run({ command: 'kadenai-style', args: 'sessao off' });
+  expect(f.statuses.at(-1)).toBeUndefined();
+  const before = f.statuses.length;
+  await f.clock.advance(60000);
+  expect(f.statuses.length).toBe(before);
+  await $.command.run({ command: 'kadenai-style', args: 'sessao on' });
+  await f.clock.advance(60000);
+  expect(f.statuses.at(-1)).toBe('Sessão: 23% (2h11min)');
+  await $.session.measure({ context: {}, rateLimits: [], changed: ['context', 'rateLimits'] });
+  await $.command.run({ command: 'kadenai-style', args: 'contexto on' });
+  expect(f.statuses.at(-1)).toBe('Contexto: — | Sessão: —');
+});
+
+test('when Desktop omits config rows, the command preserves unrelated native settings and saves its own option', async ($, on) => {
+  const f = fixture(on);
+  f.nativeConfig.available = false;
+  const original = { theme: 'light', env: { UNRELATED: 'keep' }, pluginConfigs: {
+    other: { options: { setting: 'keep' } }, 'kadenais-style@inline': {
+      mcpServers: { example: { enabled: false } }, options: { cost: false, size: 16 }
+    }
+  } };
+  f.files.set('settings.json', JSON.stringify(original));
+  f.sources.effective = original;
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  const result = await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+  expect(result.text).toContain('Salvo');
+  expect(JSON.parse(f.files.get('settings.json'))).toEqual({ ...original, pluginConfigs: {
+    ...original.pluginConfigs, 'kadenais-style@inline': {
+      ...original.pluginConfigs['kadenais-style@inline'], options: { cost: false, size: 16, position: 'embaixo' }
+    }
+  } });
+  expect(f.statuses.at(-1)).toBe('Contexto: 84.000 | Sessão: 23%');
+  expect(f.configWrites).toEqual([]);
+});
+
+test('the Desktop fallback refuses managed options and malformed settings files', async ($, on) => {
+  const f = fixture(on);
+  f.nativeConfig.available = false;
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true });
+  for (const source of ['policy', 'flag']) {
+    f.sources[source] = { pluginConfigs: { 'kadenais-style': { options: { position: 'acima' } } } };
+    const result = await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+    expect(result.text).toContain(source);
+    expect(f.files.size).toBe(0);
+    f.sources[source] = {};
+  }
+  f.files.set('settings.json', '{invalid JSON');
+  const invalid = await $.command.run({ command: 'kadenai-style', args: 'embaixo' });
+  expect(invalid.text).toContain('Não foi possível');
+  expect(f.files.get('settings.json')).toBe('{invalid JSON');
+  expect(f.statuses.at(-1)).toBeUndefined();
 });
 
 test('the five-hour countdown redraws while idle and follows a new reset timestamp', async ($, on) => {

@@ -1,14 +1,19 @@
 {
   "name": "kadenais-style",
   "displayName": "Kadenai's Style",
-  "version": "0.3.5",
-  "description": "Indicadores compactos com SVGs acima da caixa de mensagem: tokens de contexto, cotas e custo equivalente de API.",
+  "version": "0.4.0",
+  "description": "Indicadores acima ou abaixo da mensagem, com configuração nativa e comando /kadenai-style.",
   "author": { "name": "Kadenai" },
   "homepage": "https://github.com/Kadenai/kadenais-style",
   "repository": "https://github.com/Kadenai/kadenais-style",
   "license": "MIT",
   "keywords": ["mods", "desktop", "usage", "context", "cost"],
   "userConfig": {
+    "position": {
+      "type": "string", "title": "Posição dos indicadores",
+      "description": "Acima: faixa com SVGs e quatro indicadores. Embaixo: texto com tokens de contexto e cota de 5h com tempo até o reset.",
+      "default": "acima", "options": ["acima", "embaixo"]
+    },
     "context": {
       "type": "boolean", "title": "Mostrar contexto",
       "description": "Número de tokens utilizados na janela de contexto atual, conforme a última resposta do Claude.",
@@ -21,17 +26,17 @@
     },
     "weekly": {
       "type": "boolean", "title": "Mostrar limite semanal",
-      "description": "7d: percentual usado da cota semanal da conta.",
+      "description": "Na faixa acima: percentual usado da cota semanal da conta.",
       "default": true
     },
     "cost": {
       "type": "boolean", "title": "Mostrar custo equivalente de API",
-      "description": "Custo equivalente de API em USD. * indica estimativa parcial. Não é uma cobrança do plano.",
+      "description": "Na faixa acima: custo equivalente de API em USD. * indica estimativa parcial. Não é uma cobrança do plano.",
       "default": true
     },
     "size": {
       "type": "number", "title": "Tamanho da faixa (px)",
-      "description": "Aumente ou diminua entre 8 e 20. O padrão 10 é bem compacto; texto, ícones e espaçamento mudam juntos.",
+      "description": "Na faixa acima, ajuste de 8 a 20. O padrão 10 é compacto; texto, ícones e espaço mudam juntos. O rodapé usa a fonte nativa do Claude.",
       "default": 10, "min": 8, "max": 20
     }
   }

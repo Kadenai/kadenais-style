@@ -13,17 +13,22 @@ const scratch = mkdtempSync(path.join(parent, 'kadenais-style-render-'));
 const engine = process.env.CLAUDE_CODE_EXECUTABLE || 'claude';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-async function render(plugin, label) {
+async function render(plugin, label, options = {}, commandArgs) {
   const config = path.join(scratch, label + '-config');
   const debug = path.join(scratch, label + '.log');
   const mcp = path.join(scratch, 'empty-mcp.json');
   mkdirSync(config);
+  writeFileSync(path.join(config, 'settings.json'), JSON.stringify({
+    pluginConfigs: { 'kadenais-style': { options } }
+  }));
   writeFileSync(mcp, JSON.stringify({ mcpServers: {} }));
   const child = spawn(engine, ['--print', '--input-format', 'stream-json', '--output-format', 'stream-json',
-    '--verbose', '--no-session-persistence', '--plugin-dir', plugin,
+    '--verbose', '--no-session-persistence',
+    ...(Array.isArray(plugin) ? plugin : [plugin]).flatMap(root => ['--plugin-dir', root]),
     '--strict-mcp-config', '--mcp-config', mcp, '--debug-file', debug],
     { cwd: config, env: { ...process.env, CLAUDE_CONFIG_DIR: config }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
   let buffer = '', errors = '';
+  const messages = [];
   const pending = new Map();
   const fail = error => { for (const waiter of pending.values()) waiter.reject(error); pending.clear(); };
   child.on('error', fail);
@@ -37,10 +42,15 @@ async function render(plugin, label) {
       buffer = buffer.slice(end + 1);
       let message;
       try { message = JSON.parse(line); } catch { continue; }
+      messages.push(message);
       const id = message.response?.request_id;
       if (message.type === 'control_response' && pending.has(id)) {
         pending.get(id).resolve(message.response);
         pending.delete(id);
+      }
+      if (message.type === 'result' && pending.has('command')) {
+        pending.get('command').resolve(message);
+        pending.delete('command');
       }
     }
   });
@@ -57,13 +67,28 @@ async function render(plugin, label) {
   try {
     const initialized = await request('initialize', { subtype: 'initialize' });
     assert.equal(initialized.subtype, 'success', initialized.error);
+    await delay(600); // session.start can finish after the initialize response.
+    if (commandArgs !== undefined) {
+      let timer;
+      try {
+        const completion = new Promise((resolve, reject) => pending.set('command', { resolve, reject }));
+        child.stdin.write(JSON.stringify({ type: 'user', message: {
+          role: 'user', content: '/kadenai-style ' + commandArgs
+        } }) + '\n');
+        await Promise.race([completion, new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('Local command timed out')), 15000);
+        })]);
+      } finally { clearTimeout(timer); pending.delete('command'); }
+    }
     const drawn = await request('band', { subtype: 'ui_render', surface: 'desktop',
       component: 'AbovePrompt', instance_id: 'regression-test', viewport: { columns: 100, rows: 30 },
       props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 80,
         scroll: { offset: 0, bodyRows: 6 }, view: {} } });
     assert.equal(drawn.subtype, 'success', drawn.error);
     await delay(600); // Let the debug sink flush the production validation verdict.
-    return { ...drawn.response, log: readFileSync(debug, 'utf8') };
+    return { ...drawn.response, messages, initialized: initialized.response,
+      settings: JSON.parse(readFileSync(path.join(config, 'settings.json'), 'utf8')),
+      log: readFileSync(debug, 'utf8') };
   } finally {
     child.stdin.end();
     child.kill();
@@ -113,6 +138,31 @@ try {
   assert.match(svg.props.source, /font-weight="600"/);
   assert.doesNotMatch(accepted.log, /ui.render \(AbovePrompt\): a hook returned a tree that does not validate/);
   console.log('PASS: real Desktop protocol accepts the band and preserves its native drawing.');
+
+  const footer = await render(plugin, 'footer', { position: 'embaixo' });
+  assert.equal(nodes(footer.tree).some(node => node.type === 'Svg' || node.type === 'Button'), false);
+  assert.equal(footer.tree.type, 'engine');
+  assert.ok(footer.messages.some(message => JSON.stringify(message).includes('Contexto: — | Sessão: —')),
+    'The engine must send the pinned footer text to Desktop.');
+  assert.doesNotMatch(footer.log, /hook was skipped|a hook returned a tree that does not validate/);
+  assert.ok(footer.initialized.commands.some(command => command.name === 'kadenai-style'),
+    'The slash command must be registered with the native engine.');
+  console.log('PASS: real Desktop protocol publishes the text footer and registers /kadenai-style.');
+
+  const commanded = await render(plugin, 'commanded', {}, 'embaixo');
+  assert.ok(commanded.messages.some(message => JSON.stringify(message).includes('Posição: embaixo. Salvo')),
+    'The command must execute through the native dispatcher. ' + JSON.stringify({
+      commands: commanded.initialized.commands.filter(command => command.name.includes('kadenai')),
+      messages: commanded.messages.filter(message => message.subtype === 'ui_status'),
+      hooks: commanded.log.split('\n').filter(line => /skipped|command.run|command-probe|config.set/.test(line)).slice(-20)
+    }));
+  assert.ok(Object.values(commanded.settings.pluginConfigs).some(config => config.options?.position === 'embaixo'),
+    'The native writer must persist the selected position.');
+  assert.equal(commanded.tree.type, 'engine');
+  assert.ok(commanded.messages.some(message => message.type === 'result'
+    && message.num_turns === 0 && message.duration_api_ms === 0), 'The command must not call a model.');
+  assert.doesNotMatch(commanded.log, /hook was skipped|a hook returned a tree that does not validate/);
+  console.log('PASS: /kadenai-style writes native settings and immediately switches the rendering.');
 } finally {
   // Remove only our own freshly created directory in the resolved temp folder.
   const target = realpathSync(scratch);

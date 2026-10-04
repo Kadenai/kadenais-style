@@ -1,8 +1,10 @@
 # Kadenai's Style
 
-**v0.3.5 · Claude Code Desktop**
+**v0.4.0 · Claude Code Desktop**
 
 Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones SVG, texto e separadores na cor **#212420**: tokens utilizados no contexto, cota de 5 horas, cota semanal e custo equivalente de API. Os dados aparecem automaticamente, com fonte sans-serif mais marcada e fundo integrado ao tema.
+
+Também pode ficar **embaixo**, em texto: **`Contexto: 84.000 | Sessão: 23% (2h14min)`**. Escolha na aba Plugins ou com **`/kadenai-style embaixo`**.
 
 ![Exemplo compacto, com números ilustrativos](assets/preview.png)
 
@@ -17,12 +19,16 @@ Uma linha pequena e centralizada acima da caixa de mensagem com quatro ícones S
 
 ## Configurar
 
-Na aba **Plugins** das configurações do Claude, abra **Kadenai's Style**. Há quatro controles independentes, todos ligados por padrão:
+Na aba **Plugins** das configurações do Claude, abra **Kadenai's Style**. **Posição dos indicadores** oferece `acima` (padrão) e `embaixo`. Há quatro controles independentes, todos ligados por padrão:
 
 - Mostrar contexto
 - Mostrar limite da sessão
 - Mostrar limite semanal
 - Mostrar custo equivalente de API
+
+**Embaixo**, aparecem somente contexto e sessão, conforme seus controles. Semana e custo ficam reservados à faixa acima, e suas preferências são mantidas ao trocar a posição. Se ambos os indicadores do rodapé estiverem desligados, a linha desaparece.
+
+O rodapé usa a linha de status nativa, sem ícones ou botões. O Claude controla a fonte e a cor e acrescenta o nome `kadenais-style` antes dos dados. Em janelas estreitas, o próprio aplicativo pode truncar essa linha. O ajuste de tamanho abaixo aplica-se à faixa **acima**.
 
 O campo **Tamanho da faixa (px)** aceita de **8 a 20 pixels**, com padrão **10**. Texto, ícones e espaço entre os dados acompanham esse tamanho. No padrão, o desenho ocupa **18 px de altura** e apenas a largura necessária aos valores. A faixa fica centralizada e cobre a moldura cinza nativa com a cor de fundo da conversa, acompanhando os temas claro e escuro. Em uma coluna estreita, os indicadores podem passar para a linha seguinte para manter os valores legíveis.
 
@@ -30,7 +36,24 @@ A fonte usa peso 600, sem esticar artificialmente as letras. A lista de fontes p
 
 Esses campos são nativos de `userConfig`: o Claude desenha e salva os controles. Também aparecem em `/config` no terminal. O módulo recebe os valores em `register(on, options)` e recarrega quando a configuração muda. O tamanho em pixels se aplica ao SVG no Desktop; o terminal usa sua própria fonte.
 
-O mod não adiciona botões, painel próprio, comandos, recentes ou iniciador de chat sem projeto.
+O mod não adiciona botões, painel próprio, recentes ou iniciador de chat sem projeto.
+
+### Configurar por comando
+
+| Comando | Efeito |
+| --- | --- |
+| `/kadenai-style` | Mostra as configurações atuais e a ajuda |
+| `/kadenai-style embaixo` | Texto no rodapé com contexto, sessão e reset |
+| `/kadenai-style acima` | Faixa com SVGs acima da caixa |
+| `/kadenai-style tamanho 12` | Ajusta a faixa acima; aceita inteiros de 8 a 20 |
+| `/kadenai-style contexto off` | Desliga o contexto |
+| `/kadenai-style sessao on` | Liga sessão e contagem de reset |
+| `/kadenai-style semana alternar` | Alterna a cota semanal da faixa acima |
+| `/kadenai-style custo off` | Desliga o custo da faixa acima |
+
+Sem `on`, `off` ou `alternar`, o nome do indicador alterna seu controle: `/kadenai-style contexto`. Aceita acentos, como `sessão` e `posição embaixo`, além de `status` e `ajuda`. O comando executa localmente, inclusive durante uma resposta, sem chamar um modelo.
+
+O comando e a aba Plugins usam os mesmos valores em `settings.json`, na seção `pluginConfigs`. A API `$.config.set` é preferida. Nos motores 2.1.286/2.1.288, uma execução em modo SDK pode listar apenas configurações do motor, omitindo as dos plugins. Nesse caso, o comando lê as configurações atuais e salva somente sua opção na mesma seção nativa, preservando os outros campos. Recusa opções fixadas por `policy` ou `--settings`, JSON inválido e uma gravação concorrente detectada. Não mantém uma cópia de preferências no store.
 
 ## Instalar ou atualizar
 
@@ -48,7 +71,7 @@ claude plugin marketplace update kadenais-style
 claude plugin update kadenais-style@kadenais-style
 ```
 
-Depois, execute `/reload-plugins`, quando disponível, ou abra uma nova conversa local na aba Code. A conversa precisa recarregar o plugin para deixar de usar a versão anterior. Mantenha o Claude Code e o aplicativo Claude Desktop atualizados.
+Se uma conversa continuar usando a versão anterior, execute `/reload-plugins`, quando disponível, ou abra uma nova conversa local na aba Code. Mantenha o Claude Code e o aplicativo Claude Desktop atualizados.
 
 Para desenvolvimento:
 
@@ -65,11 +88,11 @@ A cota de sessão corresponde à janela de 5 horas **da conta**. O contexto most
 
 O relógio mostra, por exemplo, **`5h 8% (2h 14min)`**. A contagem usa `five_hour.resetsAt`, o horário de reset informado pelo Claude, e o relógio do host. Atualiza a cada minuto mesmo com a conversa parada, sem fazer requisições a modelos ou consultas HTTP. Os minutos são arredondados para cima; ao chegar ao horário informado, mostra `0min`, mantendo o percentual até o Claude informar uma nova medição. Sem horário válido, os parênteses não aparecem. O controle **Mostrar limite da sessão** também liga ou desliga essa contagem.
 
-A interface usa `AbovePrompt`. No Desktop, um SVG reúne texto e ícones, permitindo ajustar o tamanho do conjunto. No terminal, a mesma faixa usa texto. O mod preserva o conteúdo dos mods que vêm depois dele e cede a faixa aos controles nativos quando `hasSurvey` está ativo. Um mod anterior que substitua toda a faixa pode impedir a exibição.
+A posição acima usa `AbovePrompt`. No Desktop, um SVG reúne texto e ícones, permitindo ajustar o tamanho do conjunto. No terminal, a mesma faixa usa texto. O mod preserva o conteúdo dos mods que vêm depois dele e cede a faixa aos controles nativos quando `hasSurvey` está ativo. Um mod anterior que substitua toda a faixa pode impedir a exibição. A posição embaixo usa `$.ui.status`, deixando toda a faixa acima disponível para outros mods.
 
-**Claude Fables:** o [fork Kadenai/Claude-Fables](https://github.com/Kadenai/Claude-Fables) **0.2.2 ou posterior** preserva a composição: a animação aparece em cima e os indicadores logo abaixo, nas duas ordens de carregamento. Versões anteriores retornavam apenas a animação quando havia uma cena ativa e ocultavam os mods seguintes. A correção foi aplicada no Fables; Kadenai's Style continua na versão 0.3.5. Os dois módulos foram verificados juntos pelo protocolo real `ui_render` do motor 2.1.286, com cena e medições de teste e sem chamadas a modelos.
+**Claude Fables:** o [fork Kadenai/Claude-Fables](https://github.com/Kadenai/Claude-Fables) **0.2.2 ou posterior** preserva a composição: a animação aparece em cima e os indicadores logo abaixo, nas duas ordens de carregamento. Versões anteriores retornavam apenas a animação quando havia uma cena ativa e ocultavam os mods seguintes. No modo embaixo, os indicadores usam outra região e a animação conserva a faixa acima.
 
-O ponto anterior, `SessionMode`, filtra SVGs no Desktop analisado e limita o texto a `24ch`. A versão 0.3.0 usa a faixa acima da caixa para oferecer os ícones e mais espaço, sem duplicar os indicadores no rodapé.
+O ponto anterior, `SessionMode`, filtra SVGs no Desktop analisado e limita o texto a `24ch`. O rodapé da 0.4.0 usa a linha de status nativa para comportar os rótulos pedidos. As duas posições são alternativas; o mod não duplica os indicadores.
 
 ## Custo equivalente de API
 
@@ -92,13 +115,20 @@ claude plugin test .
 node scripts/verify-desktop.mjs
 ```
 
-**20 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços. A contagem de reset é verificada com relógio simulado: atualização durante inatividade, novo horário recebido, fusos, minutos incompletos e dados ausentes.
+**26 testes locais passaram** no Claude Code 2.1.288 e no motor 2.1.286 do Desktop 2.19675.0.0. Usam o kit oficial `claude-code/testing` e cobrem o SVG no ponto correto, ausência de botões, as 16 combinações de controles, tokens reais, dados indisponíveis, tamanho ajustável, quebra de linha, convivência com outros mods, prioridade dos controles nativos, streaming, subagentes, retomada e preços. A contagem de reset é verificada com relógio simulado: atualização durante inatividade, novo horário recebido, fusos, minutos incompletos e dados ausentes. Os testes do comando cobrem troca de posição, controles, tamanho, ajuda, argumentos inválidos, recusas de gravação e preservação das configurações nativas.
 
-O teste `scripts/verify-desktop.mjs` também passou nas duas versões. Ele inicia um motor isolado e envia a solicitação `ui_render` usada pelo Desktop, sem solicitar respostas a modelos. Primeiro confirma que a composição inválida da 0.3.1 é recusada pela validação de produção; depois confirma que a faixa corrigida é aceita, com SVG e referência nativa preservada. Para escolher outro executável, defina `CLAUDE_CODE_EXECUTABLE`. A configuração temporária é isolada das configurações e servidores MCP do usuário.
+O teste `scripts/verify-desktop.mjs` também passou nas duas versões. Ele inicia um motor isolado e envia a solicitação `ui_render` usada pelo Desktop, sem solicitar respostas a modelos. Confirma a validação de produção da faixa, a publicação do texto nativo no rodapé, o registro de `/kadenai-style` e a execução real do comando com persistência em `settings.json` e mudança imediata da posição. Para escolher outro executável, defina `CLAUDE_CODE_EXECUTABLE`. A configuração temporária é isolada das configurações e servidores MCP do usuário.
 
 A prévia é gerada com os mesmos SVGs e o mesmo código de desenho usado pelo mod. Uma verificação adicional em navegador sem interface reproduziu a moldura nativa e executou o normalizador e o gerador de estilos do Desktop analisado: a faixa permaneceu centralizada e cobriu o cinza nos dois temas, com tamanhos 8, 10 e 20 e em uma coluna estreita. Essas verificações não substituem uma conferência visual na conversa aberta.
 
 A moldura do Desktop reserva uma altura mínima de 40 px antes do zoom do aplicativo; diminuir o tamanho reduz os indicadores dentro desse espaço. A cobertura usa somente propriedades nativas de `Box` e a cor `memoryBackgroundColor`, que o Desktop mapeia para a superfície da conversa. Essa moldura pode mudar em versões futuras. A interface requer uma sessão com renderização; não há garantia de exibição no SDK, na nuvem ou em WSL.
+
+## Mudanças em 0.4.0
+
+- Opção `acima`/`embaixo` na aba Plugins, mantendo a faixa acima como padrão.
+- Rodapé em texto: **`Contexto: 84.000 | Sessão: 23% (2h14min)`**.
+- Comando **`/kadenai-style`** para posição, tamanho e quatro controles; salva nas mesmas configurações nativas.
+- Rodapé com atualização de reset durante inatividade e sem ocupar a região usada pelo Fables.
 
 ## Mudanças em 0.3.5
 
@@ -141,7 +171,7 @@ Na 0.2.1, os indicadores passaram a retornar texto explícito para corrigir o ro
 
 ## Privacidade
 
-O código não faz requisições HTTP, não lê credenciais, não inicia processos e não registra títulos, mensagens ou caminhos das conversas. Lê apenas os quatro ícones SVG que acompanha e guarda a contabilidade de custos por identificador de sessão no store local. As configurações são salvas pelo próprio Claude.
+O código não faz requisições HTTP, não inicia processos e não registra títulos, mensagens ou caminhos das conversas. Lê os quatro ícones SVG que acompanha e guarda a contabilidade de custos por identificador de sessão no store local. O comando lê as configurações do Claude para sincronizar as opções; quando a API não oferece seus campos, lê e atualiza `settings.json`. Não lê arquivos de credenciais nem envia o conteúdo das configurações a modelos ou serviços externos.
 
 ## Referências
 
