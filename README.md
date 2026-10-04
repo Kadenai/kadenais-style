@@ -67,6 +67,8 @@ O relógio mostra, por exemplo, **`5h 8% (2h 14min)`**. A contagem usa `five_hou
 
 A interface usa `AbovePrompt`. No Desktop, um SVG reúne texto e ícones, permitindo ajustar o tamanho do conjunto. No terminal, a mesma faixa usa texto. O mod preserva o conteúdo dos mods que vêm depois dele e cede a faixa aos controles nativos quando `hasSurvey` está ativo. Um mod anterior que substitua toda a faixa pode impedir a exibição.
 
+**Claude Fables:** o [fork Kadenai/Claude-Fables](https://github.com/Kadenai/Claude-Fables) **0.2.2 ou posterior** preserva a composição: a animação aparece em cima e os indicadores logo abaixo, nas duas ordens de carregamento. Versões anteriores retornavam apenas a animação quando havia uma cena ativa e ocultavam os mods seguintes. A correção foi aplicada no Fables; Kadenai's Style continua na versão 0.3.5. Os dois módulos foram verificados juntos pelo protocolo real `ui_render` do motor 2.1.286, com cena e medições de teste e sem chamadas a modelos.
+
 O ponto anterior, `SessionMode`, filtra SVGs no Desktop analisado e limita o texto a `24ch`. A versão 0.3.0 usa a faixa acima da caixa para oferecer os ícones e mais espaço, sem duplicar os indicadores no rodapé.
 
 ## Custo equivalente de API
